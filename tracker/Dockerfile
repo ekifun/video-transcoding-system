@@ -1,6 +1,6 @@
 # tracker/Dockerfile
+FROM golang:1.22.3-bullseye AS builder
 
-FROM golang:1.22.3 as builder
 WORKDIR /app
 COPY . .
 RUN go build -o tracker .
