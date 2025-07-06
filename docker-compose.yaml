@@ -58,3 +58,16 @@ services:
       - kafka
       - redis
     restart: unless-stopped
+
+  tracker:
+    build:
+      context: ./tracker
+    image: tracker:latest
+    container_name: tracker
+    environment:
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      - kafka
+      - redis
+    restart: unless-stopped
