@@ -8,8 +8,8 @@
     # ---------- Final Image ----------
     FROM debian:bullseye
     
-    # Install FFmpeg and CA certificates for HTTPS requests
-    RUN apt-get update && \
+    # Install FFmpeg and certificates (with retry/fix)
+    RUN apt-get update --fix-missing && \
         apt-get install -y ffmpeg ca-certificates && \
         rm -rf /var/lib/apt/lists/*
     
