@@ -8,7 +8,10 @@
     # ---------- Final Image ----------
     FROM debian:bullseye
     
-    RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+    # Install FFmpeg and CA certificates for HTTPS requests
+    RUN apt-get update && \
+        apt-get install -y ffmpeg ca-certificates && \
+        rm -rf /var/lib/apt/lists/*
     
     WORKDIR /app
     COPY --from=builder /app/transcode-worker /app/transcode-worker
