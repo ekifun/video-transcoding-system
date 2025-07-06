@@ -18,21 +18,22 @@ if ! grep -q "github.com/confluentinc/confluent-kafka-go" go.mod 2>/dev/null; th
   go get github.com/confluentinc/confluent-kafka-go/kafka
 fi
 
-# Ensure go.sum exists
-if [ ! -f go.sum ]; then
-  echo "📦 go.sum not found. Running 'go mod tidy' to generate it..."
-  go mod tidy
-fi
+# Ensure go.sum exists and is synced
+echo "📦 Tidying Go modules..."
+go mod tidy
 
-cd ..  # go back to root so docker build context is correct
+cd ..
 
 echo "🐳 Building transcode-worker Docker image..."
 docker build -t transcode-worker:latest -f transcode-worker/Dockerfile ./transcode-worker
 
 echo "✅ Docker image built!"
 
-# Remove existing container if exists
-docker rm -f transcode-worker 2>/dev/null || true
+# Clean up stale container if needed
+if docker ps -a --format '{{.Names}}' | grep -q '^transcode-worker$'; then
+  echo "🧹 Removing existing transcode-worker container..."
+  docker rm -f transcode-worker
+fi
 
 echo "🚀 Starting transcode-worker container..."
 docker run -d \
@@ -43,3 +44,5 @@ docker run -d \
   transcode-worker:latest
 
 echo "✅ transcode-worker is now running."
+
+echo "📄 Logs: run 'docker logs -f transcode-worker' to view output"
