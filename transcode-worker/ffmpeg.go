@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -8,12 +9,30 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
+
+	"github.com/redis/go-redis/v9"
 )
+
+var (
+	ctx        = context.Background()
+	redisAddr  = os.Getenv("REDIS_ADDR") // e.g. "localhost:6379"
+	redisClient *redis.Client
+)
+
+func init() {
+	redisClient = redis.NewClient(&redis.Options{
+		Addr: redisAddr,
+	})
+	if _, err := redisClient.Ping(ctx).Result(); err != nil {
+		log.Fatalf("❌ Failed to connect to Redis: %v", err)
+	}
+	log.Println("✅ Connected to Redis")
+}
 
 // DownloadInput downloads the input file to /tmp/{jobID}_input.mp4 and returns its local path.
 func DownloadInput(inputURL string, jobID string) (string, error) {
 	log.Printf("🌐 Downloading input from: %s", inputURL)
-
 	localPath := filepath.Join("/tmp", fmt.Sprintf("%s_input.mp4", jobID))
 
 	outFile, err := os.Create(localPath)
@@ -43,7 +62,6 @@ func DownloadInput(inputURL string, jobID string) (string, error) {
 
 // HandleTranscodeJob runs DASH-compliant segmented FFmpeg job for one representation
 func HandleTranscodeJob(job TranscodeJob) {
-	// 🛠️ Default codec to libx264 if not specified
 	if job.Codec == "" {
 		job.Codec = "libx264"
 	}
@@ -55,7 +73,6 @@ func HandleTranscodeJob(job TranscodeJob) {
 	}
 	defer os.Remove(localInput)
 
-	// Output segment pattern: /tmp/{jobID}_{rep}_%03d.mp4
 	outputPattern := fmt.Sprintf("/tmp/%s_%s_%%03d.mp4", job.JobID, job.Representation)
 
 	cmd := exec.Command("ffmpeg",
@@ -85,6 +102,14 @@ func HandleTranscodeJob(job TranscodeJob) {
 
 	log.Printf("✅ DASH segments generated at: %s", outputPattern)
 
-	// Notify Kafka that job is done
-	PublishStatus(job.JobID, job.Representation, "done")
+	// ✅ Update Redis progress
+	redisKey := fmt.Sprintf("job:progress:%s", job.JobID)
+	if err := redisClient.HSet(ctx, redisKey, job.Representation, "done").Err(); err != nil {
+		log.Printf("❌ Failed to update Redis: %v", err)
+		return
+	}
+	// Optional TTL for cleanup
+	redisClient.Expire(ctx, redisKey, 1*time.Hour)
+
+	log.Printf("📦 Updated Redis: %s → %s = done", redisKey, job.Representation)
 }
