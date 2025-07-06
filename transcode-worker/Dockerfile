@@ -1,18 +1,14 @@
 # ---------- Builder ----------
-    FROM golang:1.22.3-bullseye AS builder
+    FROM golang:1.21-bullseye AS builder
 
     WORKDIR /app
     COPY . .
-    
-    # Optional: Tidy up modules before build (recommended)
-    RUN go mod tidy && \
-        go build -o transcode-worker .
+    RUN go build -o transcode-worker .
     
     # ---------- Final Image ----------
     FROM debian:bullseye
     
-    # Install required system dependencies (e.g., for ffmpeg if needed)
-    # RUN apt-get update && apt-get install -y ffmpeg  # Uncomment if needed
+    RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
     
     WORKDIR /app
     COPY --from=builder /app/transcode-worker /app/transcode-worker
