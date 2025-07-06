@@ -1,4 +1,4 @@
-version: "3.8"
+version: "3"
 
 services:
   redis:
@@ -14,22 +14,20 @@ services:
       - "2181:2181"
 
   kafka:
-    image: bitnami/kafka:latest
+    image: bitnami/kafka:3.6.1  # Stick to a stable version that still supports ZooKeeper
     container_name: kafka
     ports:
       - "9092:9092"
     environment:
+      KAFKA_BROKER_ID: 1
       KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
       KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_CFG_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
       ALLOW_PLAINTEXT_LISTENER: "yes"
     depends_on:
       - zookeeper
-    healthcheck:
-      test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    restart: on-failure
 
   transcoding-controller:
     build:
@@ -42,8 +40,5 @@ services:
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:9092
     depends_on:
-      kafka:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    entrypoint: ["/app/wait-for-it.sh", "kafka:9092", "--", "./transcoding-controller"]
+      - kafka
+      - redis
