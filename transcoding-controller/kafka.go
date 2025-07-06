@@ -2,21 +2,9 @@ package main
 
 import (
     "encoding/json"
-    "log"
-
+    "log" // <- used below
     "github.com/confluentinc/confluent-kafka-go/kafka"
 )
-
-// NOTE: Ensure this struct is also defined in `model.go` and imported properly.
-type TranscodeJob struct {
-    JobID          string `json:"job_id"`
-    InputURL       string `json:"input_url"`
-    Representation string `json:"representation"`
-    Resolution     string `json:"resolution"`
-    Bitrate        string `json:"bitrate"`
-    Codec          string `json:"codec"`
-    OutputPath     string `json:"output_path"`
-}
 
 var producer *kafka.Producer
 
@@ -29,7 +17,6 @@ func InitKafka() error {
         return err
     }
 
-    // Start a goroutine to handle Kafka delivery reports
     go func() {
         for e := range producer.Events() {
             switch ev := e.(type) {
@@ -37,7 +24,7 @@ func InitKafka() error {
                 if ev.TopicPartition.Error != nil {
                     log.Printf("❌ Delivery failed: %v\n", ev.TopicPartition.Error)
                 } else {
-                    log.Printf("✅ Message delivered to %v\n", ev.TopicPartition)
+                    log.Printf("✅ Delivered to %v\n", ev.TopicPartition)
                 }
             }
         }
