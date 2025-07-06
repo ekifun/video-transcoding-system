@@ -61,11 +61,25 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 	jobID := uuid.New().String()
 	log.Printf("🆕 New transcode job: %s", jobID)
 
-	if err := StoreJobMetadata(jobID, req); err != nil {
-		log.Printf("❌ StoreJobMetadata error: %v", err)
-		http.Error(w, "Failed to store metadata", http.StatusInternalServerError)
-		return
+	func StoreJobMetadata(jobID string, req TranscodeRequest) error {
+		data, err := json.Marshal(req)
+		if err != nil {
+			log.Printf("❌ JSON marshal error: %v", err)
+			return err
+		}
+	
+		key := fmt.Sprintf("job:%s", jobID)
+		log.Printf("🔄 Storing key: %s", key)
+	
+		err = redisClient.Set(context.Background(), key, data, 0).Err()
+		if err != nil {
+			log.Printf("❌ Redis SET error: %v", err)
+		} else {
+			log.Printf("✅ Job metadata stored for: %s", key)
+		}
+		return err
 	}
+	
 
 	for _, rep := range req.Resolutions {
 		info, ok := resolutionMap[rep]

@@ -9,11 +9,25 @@ import (
 var redisClient *redis.Client
 var ctx = context.Background()
 
+var redisClient *redis.Client
+
 func InitRedis() {
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+	log.Printf("🔗 Connecting to Redis at: %s", redisAddr)
+
 	redisClient = redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr: redisAddr,
 	})
+
+	if err := redisClient.Ping(context.Background()).Err(); err != nil {
+		log.Fatalf("❌ Could not connect to Redis: %v", err)
+	}
+	log.Println("✅ Redis connection successful")
 }
+
 
 func StoreJobMetadata(jobID string, request TranscodeRequest) error {
 	key := fmt.Sprintf("job:%s", jobID)
