@@ -1,37 +1,30 @@
-version: "3"
-services:
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    ports:
-      - "6379:6379"
+# Stage 1: Build the Go binary
+FROM golang:1.21-alpine AS builder
 
-  kafka:
-    image: bitnami/kafka:latest
-    container_name: kafka
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_CFG_LISTENERS: PLAINTEXT://0.0.0.0:9092
-    depends_on:
-      - zookeeper
+# Install dependencies and prepare build env
+RUN apk add --no-cache git
 
-  zookeeper:
-    image: bitnami/zookeeper:latest
-    container_name: zookeeper
-    ports:
-      - "2181:2181"
+WORKDIR /app
 
-  transcoding-controller:
-    image: your-dockerhub/transcoding-controller:latest  # 📝 Replace with your image
-    container_name: transcoding-controller
-    ports:
-      - "8080:8080"
-    environment:
-      REDIS_ADDR: redis:6379
-      KAFKA_BROKERS: kafka:9092
-    depends_on:
-      - kafka
-      - redis
+# Copy all Go source files into the container
+COPY . .
+
+# Build the Go binary
+RUN go build -o transcoding-controller
+
+# Stage 2: Create minimal runtime image
+FROM alpine:latest
+
+# Install ca-certificates (needed for HTTPS requests)
+RUN apk add --no-cache ca-certificates
+
+WORKDIR /app
+
+# Copy binary from builder stage
+COPY --from=builder /app/transcoding-controller .
+
+# Expose the HTTP port
+EXPOSE 8080
+
+# Run the binary
+ENTRYPOINT ["./transcoding-controller"]
