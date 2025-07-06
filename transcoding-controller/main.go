@@ -45,6 +45,27 @@ func main() {
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
+// StoreJobMetadata saves the TranscodeRequest under a Redis key "job:<jobID>"
+func StoreJobMetadata(jobID string, req TranscodeRequest) error {
+	data, err := json.Marshal(req)
+	if err != nil {
+		log.Printf("❌ JSON marshal error: %v", err)
+		return err
+	}
+
+	key := fmt.Sprintf("job:%s", jobID)
+	log.Printf("🔄 Storing job metadata with key: %s", key)
+
+	err = redisClient.Set(context.Background(), key, data, 0).Err()
+	if err != nil {
+		log.Printf("❌ Redis SET error: %v", err)
+		return err
+	}
+
+	log.Printf("✅ Job metadata stored for jobID %s", jobID)
+	return nil
+}
+
 func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Only POST allowed", http.StatusMethodNotAllowed)
@@ -61,25 +82,12 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 	jobID := uuid.New().String()
 	log.Printf("🆕 New transcode job: %s", jobID)
 
-	func StoreJobMetadata(jobID string, req TranscodeRequest) error {
-		data, err := json.Marshal(req)
-		if err != nil {
-			log.Printf("❌ JSON marshal error: %v", err)
-			return err
-		}
-	
-		key := fmt.Sprintf("job:%s", jobID)
-		log.Printf("🔄 Storing key: %s", key)
-	
-		err = redisClient.Set(context.Background(), key, data, 0).Err()
-		if err != nil {
-			log.Printf("❌ Redis SET error: %v", err)
-		} else {
-			log.Printf("✅ Job metadata stored for: %s", key)
-		}
-		return err
+	// Store job metadata in Redis
+	if err := StoreJobMetadata(jobID, req); err != nil {
+		http.Error(w, "Failed to store metadata", http.StatusInternalServerError)
+		log.Printf("❌ Failed to store metadata: %v", err)
+		return
 	}
-	
 
 	for _, rep := range req.Resolutions {
 		info, ok := resolutionMap[rep]
