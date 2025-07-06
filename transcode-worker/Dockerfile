@@ -1,5 +1,5 @@
 # ---------- Builder ----------
-    FROM golang:1.21-bullseye AS builder
+    FROM golang:1.22.3-bullseye AS builder
 
     WORKDIR /app
     COPY . .
