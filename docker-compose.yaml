@@ -6,6 +6,12 @@ services:
     ports:
       - "6379:6379"
 
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+
   kafka:
     image: bitnami/kafka:latest
     container_name: kafka
@@ -18,14 +24,10 @@ services:
     depends_on:
       - zookeeper
 
-  zookeeper:
-    image: bitnami/zookeeper:latest
-    container_name: zookeeper
-    ports:
-      - "2181:2181"
-
   transcoding-controller:
-    image: transcoding-controller:latest  # 🟢 LOCAL image name
+    build:
+      context: ./transcoding-controller
+    image: transcoding-controller:latest
     container_name: transcoding-controller
     ports:
       - "8080:8080"
