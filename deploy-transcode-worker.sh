@@ -6,21 +6,28 @@ echo "🚀 Preparing to build and deploy transcode-worker..."
 
 cd transcode-worker
 
-# ✅ Step 1: Ensure go.sum exists
-if [ ! -f "go.sum" ]; then
+# Ensure go.mod and go.sum exist
+if [ ! -f go.sum ]; then
   echo "📦 go.sum not found. Running 'go mod tidy' to generate it..."
   go mod tidy
-else
-  echo "✅ go.sum already exists."
 fi
 
-# ✅ Step 2: Build Docker image
-echo "🐳 Building Docker image: transcode-worker:latest"
-docker build -t transcode-worker:latest .
-
-# ✅ Step 3: Start container using docker-compose
-echo "🧩 Restarting transcode-worker service via docker-compose..."
 cd ..
-docker compose up -d --build transcode-worker
 
-echo "🎉 transcode-worker deployed successfully!"
+# Build Docker image
+docker build -t transcode-worker:latest -f transcode-worker/Dockerfile .
+
+echo "✅ transcode-worker Docker image built successfully!"
+
+# Run container (remove existing one first if needed)
+docker rm -f transcode-worker 2>/dev/null || true
+
+echo "🐳 Running transcode-worker container..."
+docker run -d \
+  --name transcode-worker \
+  --network=host \
+  -e REDIS_ADDR=localhost:6379 \
+  -e KAFKA_BROKERS=localhost:9092 \
+  transcode-worker:latest
+
+echo "✅ transcode-worker is now running."
