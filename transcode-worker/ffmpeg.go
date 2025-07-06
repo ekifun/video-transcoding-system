@@ -43,15 +43,20 @@ func DownloadInput(inputURL string, jobID string) (string, error) {
 
 // HandleTranscodeJob downloads input, transcodes it using FFmpeg, and publishes status
 func HandleTranscodeJob(job TranscodeJob) {
+	// 🛠️ Default codec to libx264 if not specified
+	if job.Codec == "" {
+		job.Codec = "libx264"
+	}
+
 	localInput, err := DownloadInput(job.InputURL, job.JobID)
 	if err != nil {
 		log.Printf("❌ Download failed: %v", err)
 		return
 	}
-	defer os.Remove(localInput) // optional: clean up input file
+	defer os.Remove(localInput)
 
-	outputPath := fmt.Sprintf("/tmp/output_%s.mp4", job.Representation)
-	defer os.Remove(outputPath) // optional: clean up output file
+	outputPath := fmt.Sprintf("/tmp/%s_%s_output.mp4", job.JobID, job.Representation)
+	defer os.Remove(outputPath)
 
 	cmd := exec.Command("ffmpeg",
 		"-i", localInput,
@@ -60,6 +65,8 @@ func HandleTranscodeJob(job TranscodeJob) {
 		"-c:v", job.Codec,
 		"-y", outputPath,
 	)
+
+	log.Printf("⚙️ Running FFmpeg: %v", cmd.String())
 
 	// Capture FFmpeg stderr output
 	stderr, err := cmd.CombinedOutput()
