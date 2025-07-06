@@ -6,7 +6,13 @@ echo "🚀 Preparing to build and deploy transcode-worker..."
 
 cd transcode-worker
 
-# Ensure go.mod and go.sum exist
+# Initialize go.mod if not present
+if [ ! -f go.mod ]; then
+  echo "📦 go.mod not found. Initializing Go module..."
+  go mod init transcode-worker
+fi
+
+# Ensure go.sum exists
 if [ ! -f go.sum ]; then
   echo "📦 go.sum not found. Running 'go mod tidy' to generate it..."
   go mod tidy
