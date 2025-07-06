@@ -1,0 +1,10 @@
+{
+    "job_id": "test001",
+    "input_url": "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/1080/Big_Buck_Bunny_1080_10s_1MB.mp4",
+    "representation": "360p",
+    "resolution": "640x360",
+    "bitrate": "800k",
+    "codec": "libx264",
+    "output_path": "/tmp/output_360p.mp4"
+  }
+  
