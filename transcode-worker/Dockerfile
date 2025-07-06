@@ -1,20 +1,17 @@
-# ---------- Builder ----------
-    FROM golang:1.22.3-bullseye AS builder
+# transcode-worker/Dockerfile
+FROM golang:1.22.3-bullseye AS builder
 
-    WORKDIR /app
-    COPY . .
-    RUN go build -o transcode-worker .
-    
-    # ---------- Final Image ----------
-    FROM debian:bullseye
-    
-    # Install FFmpeg and certificates (with retry/fix)
-    RUN apt-get update --fix-missing && \
-        apt-get install -y ffmpeg ca-certificates && \
-        rm -rf /var/lib/apt/lists/*
-    
-    WORKDIR /app
-    COPY --from=builder /app/transcode-worker /app/transcode-worker
-    
-    ENTRYPOINT ["./transcode-worker"]
-    
+WORKDIR /app
+COPY . .
+
+# ✅ Add dependencies
+RUN go mod tidy
+RUN go get github.com/redis/go-redis/v9
+
+# ✅ Build the binary
+RUN go build -o transcode-worker .
+
+FROM debian:bullseye
+WORKDIR /app
+COPY --from=builder /app/transcode-worker /app/transcode-worker
+ENTRYPOINT ["./transcode-worker"]
