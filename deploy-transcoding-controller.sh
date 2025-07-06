@@ -20,4 +20,4 @@ fi
 echo "🏗️  Building and starting Docker Compose services..."
 docker compose up -d --build
 
-echo "✅ Deployment complete. Access at http://<EC2-IP>:8080/transcode"
+echo "✅ Deployment complete. Access at http://13.57.143.121:8080/transcode"
