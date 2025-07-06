@@ -29,6 +29,7 @@ services:
     container_name: redis
     ports:
       - "6379:6379"
+    restart: unless-stopped
 
   transcoding-controller:
     build:
@@ -43,3 +44,17 @@ services:
     depends_on:
       - kafka
       - redis
+    restart: unless-stopped
+
+  transcode-worker:
+    build:
+      context: ./transcode-worker
+    image: transcode-worker:latest
+    container_name: transcode-worker
+    environment:
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      - kafka
+      - redis
+    restart: unless-stopped
