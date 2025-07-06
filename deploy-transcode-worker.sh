@@ -18,17 +18,17 @@ if [ ! -f go.sum ]; then
   go mod tidy
 fi
 
-cd ..
+cd ..  # go back to root so docker build context is correct
 
-# Build Docker image
-docker build -t transcode-worker:latest -f transcode-worker/Dockerfile .
+echo "🐳 Building transcode-worker Docker image..."
+docker build -t transcode-worker:latest -f transcode-worker/Dockerfile ./transcode-worker
 
-echo "✅ transcode-worker Docker image built successfully!"
+echo "✅ Docker image built!"
 
-# Run container (remove existing one first if needed)
+# Remove existing container if exists
 docker rm -f transcode-worker 2>/dev/null || true
 
-echo "🐳 Running transcode-worker container..."
+echo "🚀 Starting transcode-worker container..."
 docker run -d \
   --name transcode-worker \
   --network=host \
