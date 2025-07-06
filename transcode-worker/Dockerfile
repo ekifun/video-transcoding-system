@@ -3,6 +3,10 @@
 
     WORKDIR /app
     
+    # Install librdkafka for confluent-kafka-go
+    RUN apt-get update && \
+        apt-get install -y librdkafka-dev
+    
     # Copy go.mod and go.sum first to leverage Docker layer caching
     COPY go.mod go.sum ./
     RUN go mod download
@@ -11,7 +15,7 @@
     COPY . .
     
     # Build the Go binary
-    RUN CGO_ENABLED=0 GOOS=linux go build -o transcode-worker
+    RUN CGO_ENABLED=1 GOOS=linux go build -o transcode-worker
     
     # -------- Final Stage --------
     FROM debian:bullseye-slim
