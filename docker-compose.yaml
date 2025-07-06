@@ -10,6 +10,7 @@ services:
     restart: unless-stopped
 
   kafka:
+    container_name: kafka
     image: bitnami/kafka:3.6.1
     ports:
       - "9092:9092"
