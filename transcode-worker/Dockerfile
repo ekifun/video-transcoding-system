@@ -1,37 +1,15 @@
-# -------- Builder Stage --------
-    FROM golang:1.22 AS builder
+# Stage 1: Builder
+FROM golang:1.21 AS builder
 
-    WORKDIR /app
-    
-    # Install librdkafka for confluent-kafka-go
-    RUN apt-get update && \
-        apt-get install -y librdkafka-dev
-    
-    # Copy go.mod and go.sum first to leverage Docker layer caching
-    COPY go.mod go.sum ./
-    RUN go mod download
-    
-    # Copy the source code
-    COPY . .
-    
-    # Build the Go binary
-    RUN CGO_ENABLED=1 GOOS=linux go build -o transcode-worker
-    
-    # -------- Final Stage --------
-    FROM debian:bullseye-slim
-    
-    # Install FFmpeg
-    RUN apt-get update && \
-        apt-get install -y ffmpeg ca-certificates && \
-        apt-get clean && \
-        rm -rf /var/lib/apt/lists/*
-    
-    # Create app directory
-    WORKDIR /app
-    
-    # Copy the binary from builder
-    COPY --from=builder /app/transcode-worker .
-    
-    # Run the service
-    ENTRYPOINT ["./transcode-worker"]
-    
+WORKDIR /app
+COPY . .
+
+RUN go build -o transcode-worker
+
+# Stage 2: Runner (same base OS to match glibc version)
+FROM debian:bullseye-slim  # or use ubuntu:20.04 if needed
+
+WORKDIR /app
+COPY --from=builder /app/transcode-worker .
+
+ENTRYPOINT ["./transcode-worker"]
