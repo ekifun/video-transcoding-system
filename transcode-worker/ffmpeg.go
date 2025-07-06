@@ -41,7 +41,7 @@ func DownloadInput(inputURL string, jobID string) (string, error) {
 	return localPath, nil
 }
 
-// HandleTranscodeJob downloads input, transcodes it using FFmpeg, and publishes status
+// HandleTranscodeJob runs DASH-compliant segmented FFmpeg job for one representation
 func HandleTranscodeJob(job TranscodeJob) {
 	// 🛠️ Default codec to libx264 if not specified
 	if job.Codec == "" {
@@ -55,27 +55,35 @@ func HandleTranscodeJob(job TranscodeJob) {
 	}
 	defer os.Remove(localInput)
 
-	outputPath := fmt.Sprintf("/tmp/%s_%s_output.mp4", job.JobID, job.Representation)
-	defer os.Remove(outputPath)
+	// Output segment pattern: /tmp/{jobID}_{rep}_%03d.mp4
+	outputPattern := fmt.Sprintf("/tmp/%s_%s_%%03d.mp4", job.JobID, job.Representation)
 
 	cmd := exec.Command("ffmpeg",
 		"-i", localInput,
 		"-vf", fmt.Sprintf("scale=%s", job.Resolution),
-		"-b:v", job.Bitrate,
 		"-c:v", job.Codec,
-		"-y", outputPath,
+		"-b:v", job.Bitrate,
+		"-an",
+		"-f", "segment",
+		"-segment_time", "4",
+		"-reset_timestamps", "1",
+		"-g", "48",
+		"-sc_threshold", "0",
+		"-force_key_frames", "expr:gte(t,n_forced*4)",
+		"-flags", "+cgop",
+		"-movflags", "+faststart",
+		"-y", outputPattern,
 	)
 
 	log.Printf("⚙️ Running FFmpeg: %v", cmd.String())
 
-	// Capture FFmpeg stderr output
 	stderr, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("❌ FFmpeg failed: %v\n%s", err, string(stderr))
 		return
 	}
 
-	log.Printf("✅ Transcoding done: %s", outputPath)
+	log.Printf("✅ DASH segments generated at: %s", outputPattern)
 
 	// Notify Kafka that job is done
 	PublishStatus(job.JobID, job.Representation, "done")
