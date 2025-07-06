@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os" // ✅ ADD THIS
 
 	"github.com/redis/go-redis/v9"
 )

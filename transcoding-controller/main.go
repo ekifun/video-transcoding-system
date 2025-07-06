@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
@@ -9,21 +8,17 @@ import (
 	"net/http"
 )
 
-var (
-	ctx = context.Background()
-
-	resolutionMap = map[string]struct {
-		Resolution string
-		Bitrate    string
-	}{
-		"144p":  {"256x144", "200k"},
-		"240p":  {"426x240", "300k"},
-		"360p":  {"640x360", "800k"},
-		"480p":  {"854x480", "1200k"},
-		"720p":  {"1280x720", "2500k"},
-		"1080p": {"1920x1080", "4500k"},
-	}
-)
+var resolutionMap = map[string]struct {
+	Resolution string
+	Bitrate    string
+}{
+	"144p":  {"256x144", "200k"},
+	"240p":  {"426x240", "300k"},
+	"360p":  {"640x360", "800k"},
+	"480p":  {"854x480", "1200k"},
+	"720p":  {"1280x720", "2500k"},
+	"1080p": {"1920x1080", "4500k"},
+}
 
 func main() {
 	log.Println("📦 Starting transcoding controller...")
@@ -31,7 +26,6 @@ func main() {
 	InitKafka()
 	InitRedis()
 
-	// ✅ Optional health check endpoint
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "Transcoding Controller is up")
@@ -59,7 +53,6 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 	jobID := uuid.New().String()
 	log.Printf("🆕 New transcode job: %s", jobID)
 
-	// Store job metadata in Redis
 	if err := StoreJobMetadata(jobID, req); err != nil {
 		http.Error(w, "Failed to store metadata", http.StatusInternalServerError)
 		log.Printf("❌ Failed to store metadata: %v", err)
