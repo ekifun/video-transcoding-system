@@ -12,6 +12,12 @@ if [ ! -f go.mod ]; then
   go mod init transcode-worker
 fi
 
+# Ensure Kafka dependency is present in go.mod
+if ! grep -q "github.com/confluentinc/confluent-kafka-go" go.mod 2>/dev/null; then
+  echo "📦 Adding Kafka dependency..."
+  go get github.com/confluentinc/confluent-kafka-go/kafka
+fi
+
 # Ensure go.sum exists
 if [ ! -f go.sum ]; then
   echo "📦 go.sum not found. Running 'go mod tidy' to generate it..."
