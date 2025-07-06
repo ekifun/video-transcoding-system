@@ -4,10 +4,8 @@ set -e
 
 echo "🚀 Installing Docker..."
 
-# Install Docker
-sudo yum update -y
-sudo amazon-linux-extras enable docker
-sudo yum install -y docker
+# Install Docker (Amazon Linux 2023 uses dnf directly)
+sudo dnf install -y docker
 sudo systemctl enable docker
 sudo systemctl start docker
 sudo usermod -aG docker $USER
@@ -17,14 +15,14 @@ newgrp docker << END
 
 echo "✅ Docker installed"
 
-# Install docker-compose v2
 echo "🚀 Installing Docker Compose v2..."
+
 mkdir -p ~/.docker/cli-plugins
 curl -SL https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
 chmod +x ~/.docker/cli-plugins/docker-compose
 docker compose version
 
-# Create deployment folder
+# Create deployment directory
 mkdir -p ~/video-transcoding-deploy
 cd ~/video-transcoding-deploy
 
@@ -74,6 +72,6 @@ echo "🚀 Starting services..."
 docker compose up -d
 
 echo "✅ All services are up and running!"
-echo "🔗 Access your controller at: http://<your-ec2-ip>:8080/transcode"
+echo "🔗 Access the controller at: http://13.57.143.121:8080/transcode"
 
 END
