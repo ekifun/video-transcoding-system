@@ -2,9 +2,14 @@
 
 set -e
 
-echo "🚀 Installing Docker & Docker Compose..."
-sudo apt update
-sudo apt install -y docker.io curl
+echo "🚀 Installing Docker..."
+
+# Install Docker
+sudo yum update -y
+sudo amazon-linux-extras enable docker
+sudo yum install -y docker
+sudo systemctl enable docker
+sudo systemctl start docker
 sudo usermod -aG docker $USER
 
 # Apply Docker group without logout
@@ -12,17 +17,16 @@ newgrp docker << END
 
 echo "✅ Docker installed"
 
-# Install docker-compose plugin
-DOCKER_COMPOSE_VERSION="v2.24.5"
+# Install docker-compose v2
+echo "🚀 Installing Docker Compose v2..."
 mkdir -p ~/.docker/cli-plugins
-curl -SL https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
+curl -SL https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
 chmod +x ~/.docker/cli-plugins/docker-compose
+docker compose version
 
-echo "✅ Docker Compose installed"
-
-# Create project folder
-mkdir -p ~/transcoding-controller-deploy
-cd ~/transcoding-controller-deploy
+# Create deployment folder
+mkdir -p ~/video-transcoding-deploy
+cd ~/video-transcoding-deploy
 
 echo "📦 Creating docker-compose.yml..."
 
@@ -70,6 +74,6 @@ echo "🚀 Starting services..."
 docker compose up -d
 
 echo "✅ All services are up and running!"
-echo "🔗 Access the controller at: http://<your-ec2-ip>:8080/transcode"
+echo "🔗 Access your controller at: http://<your-ec2-ip>:8080/transcode"
 
 END
