@@ -1,9 +1,12 @@
+package main
+
+// TranscodeJob represents a single video transcoding task
 type TranscodeJob struct {
-	JobID          string `json:"job_id"`
-	InputURL       string `json:"input_url"`
-	Representation string `json:"representation"`
-	Resolution     string `json:"resolution"`
-	Bitrate        string `json:"bitrate"`
-	Codec          string `json:"codec"`
-	OutputPath     string `json:"output_path"`
+	JobID          string `json:"job_id"`          // Unique identifier for the job
+	InputURL       string `json:"input_url"`       // Source video URL
+	Representation string `json:"representation"`  // e.g., 720p
+	Resolution     string `json:"resolution"`      // e.g., 1280x720
+	Bitrate        string `json:"bitrate"`         // e.g., 2500k
+	Codec          string `json:"codec"`           // e.g., h264
+	OutputPath     string `json:"output_path"`     // Path to save the transcoded video
 }
