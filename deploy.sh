@@ -25,6 +25,7 @@ init_go_mod() {
 # Step 1: Initialize Go modules if missing
 init_go_mod "./transcoding-controller" "transcoding-controller"
 init_go_mod "./transcode-worker" "transcode-worker"
+init_go_mod "./tracker" "tracker"
 
 # Step 2: Build and start services with Docker Compose
 echo "🏗️  Building and starting Docker Compose services..."
