@@ -1,4 +1,5 @@
-version: "3"
+version: "3.8"
+
 services:
   redis:
     image: redis:7-alpine
@@ -24,6 +25,11 @@ services:
       ALLOW_PLAINTEXT_LISTENER: "yes"
     depends_on:
       - zookeeper
+    healthcheck:
+      test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   transcoding-controller:
     build:
@@ -36,5 +42,8 @@ services:
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:9092
     depends_on:
-      - kafka
-      - redis
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    entrypoint: ["/app/wait-for-it.sh", "kafka:9092", "--", "./transcoding-controller"]
