@@ -2,15 +2,20 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
+	"os"
+
 	"github.com/redis/go-redis/v9"
 )
 
-var redisClient *redis.Client
-var ctx = context.Background()
+var (
+	redisClient *redis.Client
+	ctx         = context.Background()
+)
 
-var redisClient *redis.Client
-
+// InitRedis initializes the Redis client using REDIS_ADDR or defaults to localhost
 func InitRedis() {
 	redisAddr := os.Getenv("REDIS_ADDR")
 	if redisAddr == "" {
@@ -22,12 +27,11 @@ func InitRedis() {
 		Addr: redisAddr,
 	})
 
-	if err := redisClient.Ping(context.Background()).Err(); err != nil {
+	if err := redisClient.Ping(ctx).Err(); err != nil {
 		log.Fatalf("❌ Could not connect to Redis: %v", err)
 	}
 	log.Println("✅ Redis connection successful")
 }
-
 
 // StoreJobMetadata saves the TranscodeRequest under a Redis key "job:<jobID>"
 func StoreJobMetadata(jobID string, req TranscodeRequest) error {
@@ -40,7 +44,7 @@ func StoreJobMetadata(jobID string, req TranscodeRequest) error {
 	key := fmt.Sprintf("job:%s", jobID)
 	log.Printf("🔄 Storing job metadata with key: %s", key)
 
-	err = redisClient.Set(context.Background(), key, data, 0).Err()
+	err = redisClient.Set(ctx, key, data, 0).Err()
 	if err != nil {
 		log.Printf("❌ Redis SET error: %v", err)
 		return err
