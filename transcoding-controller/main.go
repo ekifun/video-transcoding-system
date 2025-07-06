@@ -1,14 +1,19 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
 	"log"
 	"net/http"
+	"os"
+	"time"
 )
 
 var (
+	ctx = context.Background()
+
 	resolutionMap = map[string]struct {
 		Resolution string
 		Bitrate    string
@@ -23,10 +28,19 @@ var (
 )
 
 func main() {
+	log.Println("📦 Starting transcoding controller...")
+
 	InitKafka()
 	InitRedis()
 
+	// ✅ Optional health check endpoint
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintln(w, "Transcoding Controller is up")
+	})
+
 	http.HandleFunc("/transcode", handleTranscodeRequest)
+
 	log.Println("🚀 Controller running on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
@@ -39,12 +53,16 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 
 	var req TranscodeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("❌ JSON decode error: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	jobID := uuid.New().String()
+	log.Printf("🆕 New transcode job: %s", jobID)
+
 	if err := StoreJobMetadata(jobID, req); err != nil {
+		log.Printf("❌ StoreJobMetadata error: %v", err)
 		http.Error(w, "Failed to store metadata", http.StatusInternalServerError)
 		return
 	}
@@ -55,6 +73,7 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 			log.Printf("⚠️ Unsupported resolution: %s", rep)
 			continue
 		}
+
 		job := TranscodeJob{
 			JobID:          jobID,
 			InputURL:       req.InputURL,
@@ -64,8 +83,11 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 			Codec:          req.Codec,
 			OutputPath:     fmt.Sprintf("s3://output/%s/video_%s.mp4", jobID, rep),
 		}
+
 		if err := PublishJob("transcode-jobs", job); err != nil {
 			log.Printf("❌ Failed to publish job %s: %v", rep, err)
+		} else {
+			log.Printf("✅ Published job for resolution: %s", rep)
 		}
 	}
 
