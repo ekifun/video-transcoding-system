@@ -1,9 +1,9 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+    "encoding/json"
+    "log"
+    "github.com/confluentinc/confluent-kafka-go/kafka"
 )
 
 var producer *kafka.Producer
