@@ -29,11 +29,23 @@ func InitRedis() {
 }
 
 
-func StoreJobMetadata(jobID string, request TranscodeRequest) error {
+// StoreJobMetadata saves the TranscodeRequest under a Redis key "job:<jobID>"
+func StoreJobMetadata(jobID string, req TranscodeRequest) error {
+	data, err := json.Marshal(req)
+	if err != nil {
+		log.Printf("❌ JSON marshal error: %v", err)
+		return err
+	}
+
 	key := fmt.Sprintf("job:%s", jobID)
-	return redisClient.HSet(ctx, key, map[string]interface{}{
-		"input_url": request.InputURL,
-		"codec":     request.Codec,
-		"resolutions": request.Resolutions,
-	}).Err()
+	log.Printf("🔄 Storing job metadata with key: %s", key)
+
+	err = redisClient.Set(context.Background(), key, data, 0).Err()
+	if err != nil {
+		log.Printf("❌ Redis SET error: %v", err)
+		return err
+	}
+
+	log.Printf("✅ Job metadata stored for jobID %s", jobID)
+	return nil
 }
