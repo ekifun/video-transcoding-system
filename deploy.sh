@@ -31,5 +31,17 @@ init_go_mod "./tracker" "tracker"
 echo "🏗️  Building and starting Docker Compose services..."
 docker compose up -d --build
 
+# Step 3: Wait for Kafka to be ready
+echo "⏳ Waiting for Kafka to be ready..."
+sleep 10  # Adjust delay as needed for your environment
+
+# Step 4: Create required Kafka topics
+echo "🌀 Creating Kafka topic: mpd-generation"
+docker exec kafka kafka-topics.sh --create \
+  --topic mpd-generation \
+  --bootstrap-server localhost:9092 \
+  --partitions 1 \
+  --replication-factor 1 || echo "⚠️ Topic already exists or creation failed"
+
 echo "✅ Deployment complete."
 echo "🌐 Access Transcoding Controller: http://13.57.143.121:8080/transcode"
