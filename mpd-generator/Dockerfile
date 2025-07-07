@@ -13,8 +13,11 @@
     
     # Install MP4Box (GPAC)
     RUN apt-get update && \
-        apt-get install -y gpac && \
-        rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends gpac || \
+    (apt-get update && apt-get install -y --no-install-recommends gpac) && \
+    rm -rf /var/lib/apt/lists/*
+
+
     
     WORKDIR /app
     
