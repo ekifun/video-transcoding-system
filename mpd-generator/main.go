@@ -67,7 +67,16 @@ func generateMPD(jobID string) {
 
 	for _, rep := range requiredReps {
 		pattern := filepath.Join(segmentsDir, fmt.Sprintf("%s_%s_*.mp4", jobID, rep))
-		args = append(args, pattern)
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			log.Printf("⚠️ Failed to expand pattern %s: %v", pattern, err)
+			return
+		}
+		if len(matches) == 0 {
+			log.Printf("⚠️ No matching files for %s", pattern)
+			return
+		}
+		args = append(args, matches...)
 	}
 
 	cmd := exec.Command("MP4Box", args...)
