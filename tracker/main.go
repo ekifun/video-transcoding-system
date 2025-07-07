@@ -33,7 +33,7 @@ func init() {
 
 	// Kafka
 	kafkaWriter = &kafka.Writer{
-		Addr:     kafka.TCP(os.Getenv("KAFKA_BROKER")),
+		Addr: 	  kafka.TCP(os.Getenv("KAFKA_BROKERS")),
 		Topic:    "mpd-generation",
 		Balancer: &kafka.LeastBytes{},
 	}
