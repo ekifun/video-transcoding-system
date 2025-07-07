@@ -96,4 +96,6 @@ services:
       - "8081:80"
     volumes:
       - ./segments:/usr/share/nginx/html:ro
+      - ./default.conf:/etc/nginx/conf.d/default.conf:ro
     restart: unless-stopped
+
