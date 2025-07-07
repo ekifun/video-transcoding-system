@@ -26,6 +26,7 @@ init_go_mod() {
 init_go_mod "./transcoding-controller" "transcoding-controller"
 init_go_mod "./transcode-worker" "transcode-worker"
 init_go_mod "./tracker" "tracker"
+init_go_mod "./mpd-generator" "mpd-generator"
 
 # Step 2: Build and start services with Docker Compose
 echo "🏗️  Building and starting Docker Compose services..."
