@@ -74,24 +74,20 @@ func HandleTranscodeJob(job TranscodeJob) {
 	}
 	defer os.Remove(localInput)
 
-	outputPattern := filepath.Join(outputDir, fmt.Sprintf("%s_%s_%%03d.mp4", job.JobID, job.Representation))
+	outputPath := filepath.Join(outputDir, fmt.Sprintf("%s_%s.mp4", job.JobID, job.Representation))
 
 	cmd := exec.Command("ffmpeg",
 		"-i", localInput,
 		"-vf", fmt.Sprintf("scale=%s", job.Resolution),
 		"-c:v", job.Codec,
 		"-b:v", job.Bitrate,
-		"-an",
-		"-f", "segment",
-		"-segment_time", "4",
-		"-reset_timestamps", "1",
 		"-g", "48",
+		"-keyint_min", "48",
 		"-sc_threshold", "0",
-		"-force_key_frames", "expr:gte(t,n_forced*4)",
-		"-flags", "+cgop",
-		"-movflags", "+faststart",
-		"-y", outputPattern,
-	)
+		"-an",
+		"-movflags", "+faststart+frag_keyframe+empty_moov+default_base_moof",
+		"-y", outputPath,
+	)	
 
 	log.Printf("⚙️ Running FFmpeg: %v", cmd.String())
 
