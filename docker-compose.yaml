@@ -57,6 +57,8 @@ services:
     depends_on:
       - kafka
       - redis
+    volumes:
+      - segments:/segments
     restart: unless-stopped
 
   tracker:
@@ -83,4 +85,9 @@ services:
     depends_on:
       - kafka
       - redis
+    volumes:
+      - segments:/segments
     restart: unless-stopped
+
+volumes:
+  segments:

@@ -15,9 +15,10 @@ import (
 )
 
 var (
-	ctx        = context.Background()
-	redisAddr  = os.Getenv("REDIS_ADDR") // e.g. "localhost:6379"
+	ctx         = context.Background()
+	redisAddr   = os.Getenv("REDIS_ADDR") // e.g. "redis:6379"
 	redisClient *redis.Client
+	outputDir   = "/segments" // Shared volume path
 )
 
 func init() {
@@ -30,10 +31,10 @@ func init() {
 	log.Println("✅ Connected to Redis")
 }
 
-// DownloadInput downloads the input file to /tmp/{jobID}_input.mp4 and returns its local path.
+// DownloadInput downloads the input file to /segments/{jobID}_input.mp4 and returns its local path.
 func DownloadInput(inputURL string, jobID string) (string, error) {
 	log.Printf("🌐 Downloading input from: %s", inputURL)
-	localPath := filepath.Join("/tmp", fmt.Sprintf("%s_input.mp4", jobID))
+	localPath := filepath.Join(outputDir, fmt.Sprintf("%s_input.mp4", jobID))
 
 	outFile, err := os.Create(localPath)
 	if err != nil {
@@ -73,7 +74,7 @@ func HandleTranscodeJob(job TranscodeJob) {
 	}
 	defer os.Remove(localInput)
 
-	outputPattern := fmt.Sprintf("/tmp/%s_%s_%%03d.mp4", job.JobID, job.Representation)
+	outputPattern := filepath.Join(outputDir, fmt.Sprintf("%s_%s_%%03d.mp4", job.JobID, job.Representation))
 
 	cmd := exec.Command("ffmpeg",
 		"-i", localInput,
