@@ -97,7 +97,7 @@ func HandleTranscodeJob(job TranscodeJob) {
 		return
 	}
 
-	log.Printf("✅ DASH segments generated at: %s", outputPattern)
+	log.Printf("✅ DASH segments generated at: %s", outputPath)
 
 	// ✅ Update Redis progress
 	redisKey := fmt.Sprintf("job:progress:%s", job.JobID)
