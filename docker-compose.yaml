@@ -67,4 +67,20 @@ services:
     environment:
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:9092
+    depends_on:
+      - kafka
+      - redis
+    restart: unless-stopped
 
+  mpd-generator:
+    build:
+      context: ./mpd-generator
+    image: mpd-generator:latest
+    container_name: mpd-generator
+    environment:
+      REDIS_ADDR: redis:6379
+      KAFKA_BROKER: kafka:9092
+    depends_on:
+      - kafka
+      - redis
+    restart: unless-stopped
