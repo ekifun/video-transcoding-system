@@ -58,7 +58,7 @@ services:
       - kafka
       - redis
     volumes:
-      - segments:/segments
+      - ./segments:/segments
     restart: unless-stopped
 
   tracker:
@@ -86,7 +86,7 @@ services:
       - kafka
       - redis
     volumes:
-      - segments:/segments
+      - ./segments:/segments
     restart: unless-stopped
 
   nginx:
@@ -95,11 +95,5 @@ services:
     ports:
       - "8081:80"
     volumes:
-      - segments:/usr/share/nginx/html:ro
+      - ./segments:/usr/share/nginx/html:ro
     restart: unless-stopped
-
-volumes:
-  segments:
-
-
-
