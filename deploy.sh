@@ -38,11 +38,20 @@ sleep 10  # Adjust delay as needed for your environment
 
 # Step 4: Create required Kafka topics
 echo "🌀 Creating Kafka topic: mpd-generation"
-docker exec kafka kafka-topics.sh --create \
+docker exec -i kafka kafka-topics.sh \
+  --create \
+  --if-not-exists \
   --topic mpd-generation \
   --bootstrap-server localhost:9092 \
   --partitions 1 \
-  --replication-factor 1 || echo "⚠️ Topic already exists or creation failed"
+  --replication-factor 1 2>/dev/null
+
+if [ $? -eq 0 ]; then
+  echo "✅ Kafka topic 'mpd-generation' created or already exists."
+else
+  echo "⚠️ Kafka topic 'mpd-generation' may already exist or creation failed."
+fi
 
 echo "✅ Deployment complete."
 echo "🌐 Access Transcoding Controller: http://13.57.143.121:8080/transcode"
+
