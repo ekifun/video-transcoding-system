@@ -89,8 +89,17 @@ func HandleTranscodeJob(job TranscodeJob) {
 		return
 	}
 
-	// ✅ Write codec to Redis early so it's available before FFmpeg starts
+	// ✅ Define Redis key before use
 	redisKey := fmt.Sprintf("job:%s", job.JobID)
+
+	// 🔍 Check if existing key has wrong type (string instead of hash)
+	valType, err := redisClient.Type(ctx, redisKey).Result()
+	if err == nil && valType != "hash" && valType != "none" {
+		log.Printf("⚠️ [Job %s] Redis key has wrong type (%s), deleting it...", job.JobID, valType)
+		redisClient.Del(ctx, redisKey)
+	}
+
+	// ✅ Write codec to Redis early so it's available before FFmpeg starts
 	if err := redisClient.HSet(ctx, redisKey, "codec", job.Codec).Err(); err != nil {
 		log.Printf("❌ [Job %s] Failed to write codec to Redis: %v", job.JobID, err)
 	} else {
@@ -152,5 +161,6 @@ func HandleTranscodeJob(job TranscodeJob) {
 	log.Printf("📦 [Job %s] Updated Redis → %s = done, %s_output = %s",
 		job.JobID, job.Representation, job.Representation, outputPath)
 }
+
 
 
