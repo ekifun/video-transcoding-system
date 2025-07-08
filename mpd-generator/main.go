@@ -71,8 +71,8 @@ func generateMPD(jobID string) {
 	outputPath := filepath.Join(jobDir, "manifest.mpd")
 	os.MkdirAll(jobDir, 0755)
 
-	// 🔁 Lookup codec from Redis
-	redisKey := fmt.Sprintf("job:progress:%s", jobID)
+	// ✅ Use correct Redis key to match transcode-worker
+	redisKey := fmt.Sprintf("job:%s", jobID)
 	codec, err := redisClient.HGet(ctx, redisKey, "codec").Result()
 	if err != nil {
 		log.Printf("❌ Failed to read codec from Redis for job %s: %v", jobID, err)
@@ -118,3 +118,4 @@ func generateMPD(jobID string) {
 
 	log.Printf("✅ MPD generated: %s", outputPath)
 }
+
