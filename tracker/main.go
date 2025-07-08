@@ -56,17 +56,22 @@ func checkCompletedJobs() {
 	}
 
 	for _, key := range keys {
-		jobID := strings.TrimPrefix(key, "job:progress:")
-		progress, err := redisClient.HGetAll(ctx, key).Result()
+		jobID := strings.TrimPrefix(key, "job:")
+		jobData, err := redisClient.HGetAll(ctx, key).Result()
 		if err != nil {
-			log.Printf("❌ Failed to read progress: %v", err)
+			log.Printf("❌ Failed to read Redis hash for %s: %v", key, err)
 			continue
 		}
 
-		if allRepsDone(progress) {
+		if allRepsDone(jobData) {
 			log.Printf("✅ All done for job: %s", jobID)
 			publishReadyForMPD(jobID)
-			redisClient.Del(ctx, key) // cleanup
+
+			// Mark status instead of deleting
+			err := redisClient.HSet(ctx, key, "status", "ready_for_mpd").Err()
+			if err != nil {
+				log.Printf("⚠️ Failed to update job status in Redis: %v", err)
+			}
 		}
 	}
 }
