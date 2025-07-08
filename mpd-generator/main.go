@@ -83,7 +83,7 @@ func generateMPD(jobID string) {
 	var profile string
 	switch strings.ToLower(codec) {
 	case "hevc", "h265":
-		profile = "dashavc265:live" // ✅ Correct profile for HEVC
+		profile = "dashh265:live"
 	case "h264", "avc":
 		profile = "dashavc264:live" // ✅ Correct profile for H.264
 	default:
