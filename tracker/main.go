@@ -49,7 +49,7 @@ func main() {
 }
 
 func checkCompletedJobs() {
-	keys, err := redisClient.Keys(ctx, "job:progress:*").Result()
+	keys, err := redisClient.Keys(ctx, "job:*").Result()
 	if err != nil {
 		log.Printf("❌ Failed to scan Redis: %v", err)
 		return
