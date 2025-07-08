@@ -17,12 +17,12 @@ import (
 var (
 	ctx          = context.Background()
 	requiredReps = []string{"144p", "360p", "720p"}
-	segmentsDir  = "/segments" // Shared volume
+	segmentsDir  = "/segments" // Shared volume for transcoded files
 )
 
 // Redis client for codec lookup
 var redisClient = redis.NewClient(&redis.Options{
-	Addr: os.Getenv("REDIS_ADDR"), // e.g. "redis:6379"
+	Addr: os.Getenv("REDIS_ADDR"), // Example: "redis:6379"
 })
 
 // Kafka message structure
@@ -34,7 +34,7 @@ type MPDMessage struct {
 func main() {
 	log.Println("🚀 Starting MPD Generator...")
 
-	// ✅ Check Redis connectivity
+	// ✅ Verify Redis connectivity
 	if _, err := redisClient.Ping(ctx).Result(); err != nil {
 		log.Fatalf("❌ Failed to connect to Redis: %v", err)
 	}
@@ -71,7 +71,7 @@ func generateMPD(jobID string) {
 	outputPath := filepath.Join(jobDir, "manifest.mpd")
 	os.MkdirAll(jobDir, 0755)
 
-	// ✅ Use correct Redis key to match transcode-worker
+	// ✅ Get codec from Redis hash (shared job structure)
 	redisKey := fmt.Sprintf("job:%s", jobID)
 	codec, err := redisClient.HGet(ctx, redisKey, "codec").Result()
 	if err != nil {
@@ -83,8 +83,8 @@ func generateMPD(jobID string) {
 	var profile string
 	switch strings.ToLower(codec) {
 	case "hevc", "h265":
-		profile = "dash265:live"
-	case "h264":
+		profile = "dashh265:live"
+	case "h264", "avc":
 		profile = "dashavc264:live"
 	default:
 		log.Printf("⚠️ Unknown codec '%s' for job %s. Defaulting to h264 profile", codec, jobID)
@@ -98,13 +98,14 @@ func generateMPD(jobID string) {
 		"-out", outputPath,
 	}
 
+	// Append each representation file
 	for _, rep := range requiredReps {
-		pattern := filepath.Join(segmentsDir, fmt.Sprintf("%s_%s.mp4", jobID, rep))
-		if _, err := os.Stat(pattern); os.IsNotExist(err) {
-			log.Printf("⚠️ Missing representation file: %s", pattern)
+		file := filepath.Join(segmentsDir, fmt.Sprintf("%s_%s.mp4", jobID, rep))
+		if _, err := os.Stat(file); os.IsNotExist(err) {
+			log.Printf("⚠️ Missing representation file: %s", file)
 			return
 		}
-		args = append(args, pattern)
+		args = append(args, file)
 	}
 
 	cmd := exec.Command("MP4Box", args...)
@@ -118,4 +119,3 @@ func generateMPD(jobID string) {
 
 	log.Printf("✅ MPD generated: %s", outputPath)
 }
-
