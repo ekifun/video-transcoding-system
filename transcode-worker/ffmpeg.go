@@ -90,7 +90,7 @@ func HandleTranscodeJob(job TranscodeJob) {
 	}
 
 	// ✅ Write codec to Redis early so it's available before FFmpeg starts
-	redisKey := fmt.Sprintf("job:progress:%s", job.JobID)
+	redisKey := fmt.Sprintf("job:%s", job.JobID)
 	if err := redisClient.HSet(ctx, redisKey, "codec", job.Codec).Err(); err != nil {
 		log.Printf("❌ [Job %s] Failed to write codec to Redis: %v", job.JobID, err)
 	} else {
