@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
 )
 
@@ -19,6 +20,12 @@ var (
 	segmentsDir  = "/segments" // Shared volume
 )
 
+// Redis client for codec lookup
+var redisClient = redis.NewClient(&redis.Options{
+	Addr: os.Getenv("REDIS_ADDR"), // e.g. "redis:6379"
+})
+
+// Kafka message structure
 type MPDMessage struct {
 	JobID  string `json:"job_id"`
 	Status string `json:"status"`
@@ -26,6 +33,12 @@ type MPDMessage struct {
 
 func main() {
 	log.Println("🚀 Starting MPD Generator...")
+
+	// ✅ Check Redis connectivity
+	if _, err := redisClient.Ping(ctx).Result(); err != nil {
+		log.Fatalf("❌ Failed to connect to Redis: %v", err)
+	}
+	log.Println("✅ Connected to Redis")
 
 	r := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  []string{os.Getenv("KAFKA_BROKER")},
@@ -58,10 +71,30 @@ func generateMPD(jobID string) {
 	outputPath := filepath.Join(jobDir, "manifest.mpd")
 	os.MkdirAll(jobDir, 0755)
 
+	// 🔁 Lookup codec from Redis
+	redisKey := fmt.Sprintf("job:progress:%s", jobID)
+	codec, err := redisClient.HGet(ctx, redisKey, "codec").Result()
+	if err != nil {
+		log.Printf("❌ Failed to read codec from Redis for job %s: %v", jobID, err)
+		return
+	}
+
+	// Select DASH profile based on codec
+	var profile string
+	switch strings.ToLower(codec) {
+	case "hevc", "h265":
+		profile = "dash265:live"
+	case "h264":
+		profile = "dashavc264:live"
+	default:
+		log.Printf("⚠️ Unknown codec '%s' for job %s. Defaulting to h264 profile", codec, jobID)
+		profile = "dashavc264:live"
+	}
+
 	args := []string{
 		"-dash", "4000",
 		"-rap", "-frag-rap",
-		"-profile", "dashavc264:live",
+		"-profile", profile,
 		"-out", outputPath,
 	}
 
@@ -72,7 +105,7 @@ func generateMPD(jobID string) {
 			return
 		}
 		args = append(args, pattern)
-	}	
+	}
 
 	cmd := exec.Command("MP4Box", args...)
 	log.Printf("📦 Running MP4Box: %s", strings.Join(cmd.Args, " "))
