@@ -89,6 +89,12 @@ func HandleTranscodeJob(job TranscodeJob) {
 		return
 	}
 
+	// ✅ Write codec to Redis early so it's available before FFmpeg starts
+	redisKey := fmt.Sprintf("job:progress:%s", job.JobID)
+	if err := redisClient.HSet(ctx, redisKey, "codec", job.Codec).Err(); err != nil {
+		log.Printf("⚠️ Failed to write codec to Redis: %v", err)
+	}
+
 	// Map to FFmpeg encoder
 	ffmpegCodec := MapCodecToFFmpeg(job.Codec)
 
@@ -124,12 +130,8 @@ func HandleTranscodeJob(job TranscodeJob) {
 
 	log.Printf("✅ DASH segments generated at: %s", outputPath)
 
-	// ✅ Update Redis progress
-	redisKey := fmt.Sprintf("job:progress:%s", job.JobID)
-
-	// 🧩 Enhancement 3: Store both status and output path
+	// ✅ Update Redis progress (status + output path)
 	if err := redisClient.HSet(ctx, redisKey,
-		"codec", job.Codec,
 		job.Representation, "done",
 		fmt.Sprintf("%s_output", job.Representation), outputPath,
 	).Err(); err != nil {
@@ -142,4 +144,5 @@ func HandleTranscodeJob(job TranscodeJob) {
 	log.Printf("📦 Updated Redis: %s → %s = done, %s_output = %s",
 		redisKey, job.Representation, job.Representation, outputPath)
 }
+
 
