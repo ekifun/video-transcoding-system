@@ -71,7 +71,6 @@ func generateMPD(jobID string) {
 	outputPath := filepath.Join(jobDir, "manifest.mpd")
 	os.MkdirAll(jobDir, 0755)
 
-	// ✅ Get codec from Redis hash (shared job structure)
 	redisKey := fmt.Sprintf("job:%s", jobID)
 	codec, err := redisClient.HGet(ctx, redisKey, "codec").Result()
 	if err != nil {
@@ -79,26 +78,23 @@ func generateMPD(jobID string) {
 		return
 	}
 
-	// ✅ Select DASH profile based on codec
-	var profile string
-	switch strings.ToLower(codec) {
-	case "hevc", "h265":
-		profile = "dash:live"  // ✅ use this for HEVC
-	case "h264", "avc":
-		profile = "dashavc264:live" // ✅ Correct profile for H.264
-	default:
-		log.Printf("⚠️ Unknown codec '%s' for job %s. Defaulting to h264 profile", codec, jobID)
-		profile = "dashavc264:live"
-	}
-
 	args := []string{
 		"-dash", "4000",
 		"-rap", "-frag-rap",
-		"-profile", profile,
 		"-out", outputPath,
 	}
 
-	// ✅ Append each representation file
+	// ✅ Append AVC profile only when applicable
+	switch strings.ToLower(codec) {
+	case "h264", "avc":
+		args = append([]string{"-profile", "dashavc264:live"}, args...)
+	case "hevc", "h265":
+		log.Printf("ℹ️ Skipping -profile for HEVC job %s", jobID)
+	default:
+		log.Printf("⚠️ Unknown codec '%s' for job %s, using default AVC profile", codec, jobID)
+		args = append([]string{"-profile", "dashavc264:live"}, args...)
+	}
+
 	for _, rep := range requiredReps {
 		file := filepath.Join(segmentsDir, fmt.Sprintf("%s_%s.mp4", jobID, rep))
 		if _, err := os.Stat(file); os.IsNotExist(err) {
@@ -119,4 +115,5 @@ func generateMPD(jobID string) {
 
 	log.Printf("✅ MPD generated: %s", outputPath)
 }
+
 
