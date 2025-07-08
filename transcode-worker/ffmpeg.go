@@ -80,19 +80,21 @@ func HandleTranscodeJob(job TranscodeJob) {
 	}
 
 	// 🧩 Enhancement 1: Log input job parameters
-	log.Printf("📥 Received Job: ID=%s | Codec=%s | Resolution=%s | Bitrate=%s | InputURL=%s | Representation=%s",
+	log.Printf("📥 [Job %s] Received Job | Codec=%s | Resolution=%s | Bitrate=%s | InputURL=%s | Representation=%s",
 		job.JobID, job.Codec, job.Resolution, job.Bitrate, job.InputURL, job.Representation)
 
 	// 🧩 Enhancement 2: Validate input fields
 	if job.Resolution == "" || job.Bitrate == "" {
-		log.Printf("⚠️ Missing resolution or bitrate. Skipping job: %+v", job)
+		log.Printf("⚠️ [Job %s] Missing resolution or bitrate. Skipping job.", job.JobID)
 		return
 	}
 
 	// ✅ Write codec to Redis early so it's available before FFmpeg starts
 	redisKey := fmt.Sprintf("job:progress:%s", job.JobID)
 	if err := redisClient.HSet(ctx, redisKey, "codec", job.Codec).Err(); err != nil {
-		log.Printf("⚠️ Failed to write codec to Redis: %v", err)
+		log.Printf("❌ [Job %s] Failed to write codec to Redis: %v", job.JobID, err)
+	} else {
+		log.Printf("✅ [Job %s] Wrote codec to Redis: %s", job.JobID, job.Codec)
 	}
 
 	// Map to FFmpeg encoder
@@ -100,10 +102,12 @@ func HandleTranscodeJob(job TranscodeJob) {
 
 	localInput, err := DownloadInput(job.InputURL, job.JobID)
 	if err != nil {
-		log.Printf("❌ Download failed: %v", err)
+		log.Printf("❌ [Job %s] Download failed: %v", job.JobID, err)
 		return
 	}
 	defer os.Remove(localInput)
+
+	log.Printf("📥 [Job %s] Input downloaded to: %s", job.JobID, localInput)
 
 	outputPath := filepath.Join(outputDir, fmt.Sprintf("%s_%s.mp4", job.JobID, job.Representation))
 
@@ -120,29 +124,33 @@ func HandleTranscodeJob(job TranscodeJob) {
 		"-y", outputPath,
 	)
 
-	log.Printf("⚙️ Running FFmpeg: %v", cmd.String())
+	log.Printf("⚙️ [Job %s] Running FFmpeg: %v", job.JobID, cmd.String())
 
 	stderr, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("❌ FFmpeg failed: %v\n%s", err, string(stderr))
+		log.Printf("❌ [Job %s] FFmpeg failed: %v\n%s", job.JobID, err, string(stderr))
 		return
 	}
 
-	log.Printf("✅ DASH segments generated at: %s", outputPath)
+	log.Printf("✅ [Job %s] DASH segment generated: %s", job.JobID, outputPath)
 
 	// ✅ Update Redis progress (status + output path)
 	if err := redisClient.HSet(ctx, redisKey,
 		job.Representation, "done",
 		fmt.Sprintf("%s_output", job.Representation), outputPath,
 	).Err(); err != nil {
-		log.Printf("❌ Failed to update Redis: %v", err)
+		log.Printf("❌ [Job %s] Failed to update Redis progress: %v", job.JobID, err)
 		return
 	}
 
-	redisClient.Expire(ctx, redisKey, 1*time.Hour)
+	if err := redisClient.Expire(ctx, redisKey, 1*time.Hour).Err(); err != nil {
+		log.Printf("⚠️ [Job %s] Failed to set TTL for Redis key: %v", job.JobID, err)
+	} else {
+		log.Printf("⏳ [Job %s] Set Redis TTL: 1 hour", job.JobID)
+	}
 
-	log.Printf("📦 Updated Redis: %s → %s = done, %s_output = %s",
-		redisKey, job.Representation, job.Representation, outputPath)
+	log.Printf("📦 [Job %s] Updated Redis → %s = done, %s_output = %s",
+		job.JobID, job.Representation, job.Representation, outputPath)
 }
 
 
