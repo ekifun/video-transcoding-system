@@ -79,13 +79,13 @@ func generateMPD(jobID string) {
 		return
 	}
 
-	// Select DASH profile based on codec
+	// ✅ Select DASH profile based on codec
 	var profile string
 	switch strings.ToLower(codec) {
 	case "hevc", "h265":
-		profile = "dashh265:live"
+		profile = "dashavc265:live" // ✅ Correct profile for HEVC
 	case "h264", "avc":
-		profile = "dashavc264:live"
+		profile = "dashavc264:live" // ✅ Correct profile for H.264
 	default:
 		log.Printf("⚠️ Unknown codec '%s' for job %s. Defaulting to h264 profile", codec, jobID)
 		profile = "dashavc264:live"
@@ -98,7 +98,7 @@ func generateMPD(jobID string) {
 		"-out", outputPath,
 	}
 
-	// Append each representation file
+	// ✅ Append each representation file
 	for _, rep := range requiredReps {
 		file := filepath.Join(segmentsDir, fmt.Sprintf("%s_%s.mp4", jobID, rep))
 		if _, err := os.Stat(file); os.IsNotExist(err) {
@@ -119,3 +119,4 @@ func generateMPD(jobID string) {
 
 	log.Printf("✅ MPD generated: %s", outputPath)
 }
+
