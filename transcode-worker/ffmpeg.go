@@ -129,6 +129,7 @@ func HandleTranscodeJob(job TranscodeJob) {
 
 	// 🧩 Enhancement 3: Store both status and output path
 	if err := redisClient.HSet(ctx, redisKey,
+		"codec", job.Codec,
 		job.Representation, "done",
 		fmt.Sprintf("%s_output", job.Representation), outputPath,
 	).Err(); err != nil {
