@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import Checkbox from 'expo-checkbox';
 
 export default function App() {
@@ -11,6 +11,7 @@ export default function App() {
     "360p": true,
     "720p": true,
   });
+  const [codec, setCodec] = useState("h264");
   const [submitting, setSubmitting] = useState(false);
 
   const handleCheckboxChange = (key) => {
@@ -24,7 +25,7 @@ export default function App() {
     const payload = {
       input_url: inputURL,
       resolutions: selected,
-      codec: "h264",
+      codec,
     };
 
     try {
@@ -72,6 +73,22 @@ export default function App() {
         </View>
       ))}
 
+      <Text style={styles.label}>Codec:</Text>
+      <View style={styles.codecOptions}>
+        {["h264", "hevc"].map((opt) => (
+          <TouchableOpacity
+            key={opt}
+            onPress={() => setCodec(opt)}
+            style={styles.radioRow}
+          >
+            <View style={styles.radioCircle}>
+              {codec === opt && <View style={styles.radioDot} />}
+            </View>
+            <Text style={styles.checkboxLabel}>{opt.toUpperCase()}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <View style={styles.submitBtn}>
         <Button title={submitting ? "Submitting..." : "Submit"} onPress={handleSubmit} disabled={submitting} />
       </View>
@@ -112,5 +129,29 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     marginTop: 30,
+  },
+  codecOptions: {
+    marginTop: 10,
+  },
+  radioRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 5,
+  },
+  radioCircle: {
+    height: 20,
+    width: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#555",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  radioDot: {
+    height: 10,
+    width: 10,
+    borderRadius: 5,
+    backgroundColor: "#555",
   },
 });
