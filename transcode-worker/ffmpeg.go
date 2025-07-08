@@ -61,11 +61,36 @@ func DownloadInput(inputURL string, jobID string) (string, error) {
 	return localPath, nil
 }
 
-// HandleTranscodeJob runs DASH-compliant segmented FFmpeg job for one representation
+// MapCodecToFFmpeg maps "h264" and "hevc" to FFmpeg codec names
+func MapCodecToFFmpeg(codec string) string {
+	switch codec {
+	case "hevc", "h265":
+		return "libx265"
+	case "h264":
+		return "libx264"
+	default:
+		log.Printf("⚠️ Unsupported codec '%s'. Defaulting to h264 (libx264)", codec)
+		return "libx264"
+	}
+}
+
 func HandleTranscodeJob(job TranscodeJob) {
 	if job.Codec == "" {
-		job.Codec = "libx264"
+		job.Codec = "h264" // Default to H.264
 	}
+
+	// 🧩 Enhancement 1: Log input job parameters
+	log.Printf("📥 Received Job: ID=%s | Codec=%s | Resolution=%s | Bitrate=%s | InputURL=%s | Representation=%s",
+		job.JobID, job.Codec, job.Resolution, job.Bitrate, job.InputURL, job.Representation)
+
+	// 🧩 Enhancement 2: Validate input fields
+	if job.Resolution == "" || job.Bitrate == "" {
+		log.Printf("⚠️ Missing resolution or bitrate. Skipping job: %+v", job)
+		return
+	}
+
+	// Map to FFmpeg encoder
+	ffmpegCodec := MapCodecToFFmpeg(job.Codec)
 
 	localInput, err := DownloadInput(job.InputURL, job.JobID)
 	if err != nil {
@@ -79,7 +104,7 @@ func HandleTranscodeJob(job TranscodeJob) {
 	cmd := exec.Command("ffmpeg",
 		"-i", localInput,
 		"-vf", fmt.Sprintf("scale=%s", job.Resolution),
-		"-c:v", job.Codec,
+		"-c:v", ffmpegCodec,
 		"-b:v", job.Bitrate,
 		"-g", "48",
 		"-keyint_min", "48",
@@ -87,7 +112,7 @@ func HandleTranscodeJob(job TranscodeJob) {
 		"-an",
 		"-movflags", "+faststart+frag_keyframe+empty_moov+default_base_moof",
 		"-y", outputPath,
-	)	
+	)
 
 	log.Printf("⚙️ Running FFmpeg: %v", cmd.String())
 
@@ -101,12 +126,19 @@ func HandleTranscodeJob(job TranscodeJob) {
 
 	// ✅ Update Redis progress
 	redisKey := fmt.Sprintf("job:progress:%s", job.JobID)
-	if err := redisClient.HSet(ctx, redisKey, job.Representation, "done").Err(); err != nil {
+
+	// 🧩 Enhancement 3: Store both status and output path
+	if err := redisClient.HSet(ctx, redisKey,
+		job.Representation, "done",
+		fmt.Sprintf("%s_output", job.Representation), outputPath,
+	).Err(); err != nil {
 		log.Printf("❌ Failed to update Redis: %v", err)
 		return
 	}
-	// Optional TTL for cleanup
+
 	redisClient.Expire(ctx, redisKey, 1*time.Hour)
 
-	log.Printf("📦 Updated Redis: %s → %s = done", redisKey, job.Representation)
+	log.Printf("📦 Updated Redis: %s → %s = done, %s_output = %s",
+		redisKey, job.Representation, job.Representation, outputPath)
 }
+
