@@ -32,6 +32,10 @@ type MPDMessage struct {
 func main() {
 	log.Println("🚀 Starting MPD Generator...")
 
+	// ✅ Initialize DB
+	InitDB()
+
+	// ✅ Verify Redis connectivity
 	if _, err := redisClient.Ping(ctx).Result(); err != nil {
 		log.Fatalf("❌ Failed to connect to Redis: %v", err)
 	}
@@ -115,7 +119,7 @@ func generateMPD(jobID string) {
 	streamName, _ := redisClient.HGet(ctx, redisKey, "stream_name").Result()
 	originalURL, _ := redisClient.HGet(ctx, redisKey, "original_url").Result()
 
-	if err := db.SaveJobToDB(jobID, streamName, originalURL, codec, requiredReps, outputPath); err != nil {
+	if err := SaveJobToDB(jobID, streamName, originalURL, codec, strings.Join(requiredReps, ","), outputPath); err != nil {
 		log.Printf("⚠️ Failed to persist job to DB: %v", err)
 	} else {
 		log.Printf("✅ Job metadata persisted to DB for job %s", jobID)
