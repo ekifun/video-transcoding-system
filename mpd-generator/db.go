@@ -28,7 +28,7 @@ func InitDB() {
 	CREATE TABLE IF NOT EXISTS transcoded_jobs (
 		job_id TEXT PRIMARY KEY,
 		stream_name TEXT,
-		original_url TEXT,
+		input_url TEXT,
 		codec TEXT,
 		representations TEXT,
 		mpd_url TEXT,
@@ -46,7 +46,7 @@ func InitDB() {
 func SaveJobToDB(jobID, streamName, originalURL, codec, representations, mpdURL string) error {
 	stmt := `
 	INSERT OR REPLACE INTO transcoded_jobs
-	(job_id, stream_name, original_url, codec, representations, mpd_url)
+	(job_id, stream_name, input_url, codec, representations, mpd_url)
 	VALUES (?, ?, ?, ?, ?, ?);`
 
 	_, err := DB.Exec(stmt, jobID, streamName, originalURL, codec, representations, mpdURL)
