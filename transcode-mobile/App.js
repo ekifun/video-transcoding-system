@@ -1,5 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  Button,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  TouchableOpacity,
+} from 'react-native';
 import Checkbox from 'expo-checkbox';
 
 export default function App() {
@@ -13,6 +22,23 @@ export default function App() {
   });
   const [codec, setCodec] = useState("h264");
   const [submitting, setSubmitting] = useState(false);
+  const [jobs, setJobs] = useState([]);
+
+  useEffect(() => {
+    loadJobs();
+  }, []);
+
+  const loadJobs = async () => {
+    try {
+      const res = await fetch("http://13.57.143.121:8080/jobs");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setJobs(data);
+      }
+    } catch (err) {
+      console.error("❌ Failed to load jobs:", err);
+    }
+  };
 
   const handleCheckboxChange = (key) => {
     setResolutions((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -26,20 +52,20 @@ export default function App() {
       input_url: inputURL,
       resolutions: selected,
       codec,
+      stream_name: "big-bunny-1080p", // or allow user input
     };
 
     try {
       const res = await fetch("http://13.57.143.121:8080/transcode", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (res.ok) {
         Alert.alert("✅ Job Submitted", `Job ID: ${data.job_id}`);
+        loadJobs(); // Refresh jobs list
       } else {
         Alert.alert("❌ Submission Failed", JSON.stringify(data));
       }
@@ -92,66 +118,45 @@ export default function App() {
       <View style={styles.submitBtn}>
         <Button title={submitting ? "Submitting..." : "Submit"} onPress={handleSubmit} disabled={submitting} />
       </View>
+
+      <Text style={styles.label}>Recent Jobs:</Text>
+      {jobs.map((job) => (
+        <View key={job.job_id} style={styles.jobCard}>
+          <Text style={styles.jobText}>📦 {job.job_id}</Text>
+          <Text>📺 {job.stream_name}</Text>
+          <Text>📹 {job.codec} → {job.representations}</Text>
+          <Text numberOfLines={1}>🔗 {job.mpd_url}</Text>
+        </View>
+      ))}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    paddingTop: 50,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  label: {
-    fontWeight: "bold",
-    marginTop: 20,
-  },
-  input: {
-    borderColor: "#999",
-    borderWidth: 1,
-    padding: 10,
-    borderRadius: 5,
-    marginTop: 5,
-    backgroundColor: "#fff",
-  },
-  checkboxRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 5,
-  },
-  checkboxLabel: {
-    marginLeft: 10,
-  },
-  submitBtn: {
-    marginTop: 30,
-  },
-  codecOptions: {
-    marginTop: 10,
-  },
-  radioRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 5,
-  },
+  container: { padding: 20, paddingTop: 50 },
+  title: { fontSize: 22, fontWeight: "bold", marginBottom: 20, textAlign: "center" },
+  label: { fontWeight: "bold", marginTop: 20 },
+  input: { borderColor: "#999", borderWidth: 1, padding: 10, borderRadius: 5, marginTop: 5, backgroundColor: "#fff" },
+  checkboxRow: { flexDirection: "row", alignItems: "center", marginVertical: 5 },
+  checkboxLabel: { marginLeft: 10 },
+  submitBtn: { marginTop: 30 },
+  codecOptions: { marginTop: 10 },
+  radioRow: { flexDirection: "row", alignItems: "center", marginVertical: 5 },
   radioCircle: {
-    height: 20,
-    width: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#555",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
+    height: 20, width: 20, borderRadius: 10, borderWidth: 2,
+    borderColor: "#555", alignItems: "center", justifyContent: "center", marginRight: 10
   },
-  radioDot: {
-    height: 10,
-    width: 10,
+  radioDot: { height: 10, width: 10, borderRadius: 5, backgroundColor: "#555" },
+  jobCard: {
+    marginTop: 15,
+    padding: 10,
+    backgroundColor: "#eef",
     borderRadius: 5,
-    backgroundColor: "#555",
+    borderColor: "#ccd",
+    borderWidth: 1,
+  },
+  jobText: {
+    fontWeight: "bold",
+    marginBottom: 4,
   },
 });
