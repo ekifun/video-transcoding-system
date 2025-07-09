@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"log"
 	"net/http"
+	"strings"
 )
 
 var resolutionMap = map[string]struct {
@@ -18,6 +19,11 @@ var resolutionMap = map[string]struct {
 	"480p":  {"854x480", "1200k"},
 	"720p":  {"1280x720", "2500k"},
 	"1080p": {"1920x1080", "4500k"},
+}
+
+var validCodecs = map[string]bool{
+	"h264": true,
+	"hevc": true,
 }
 
 func main() {
@@ -47,6 +53,18 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("❌ JSON decode error: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("📥 Received transcode request: %+v", req)
+
+	// ✅ Validate fields
+	if req.StreamName == "" || req.InputURL == "" || len(req.Resolutions) == 0 || req.Codec == "" {
+		http.Error(w, "Missing required fields", http.StatusBadRequest)
+		return
+	}
+	if !validCodecs[req.Codec] {
+		http.Error(w, "Unsupported codec", http.StatusBadRequest)
 		return
 	}
 
