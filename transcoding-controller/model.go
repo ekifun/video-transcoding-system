@@ -1,9 +1,10 @@
 package main
 
 type TranscodeRequest struct {
-	InputURL string   `json:"input_url"`
-	Codec    string   `json:"codec"` // e.g., h264
-	Resolutions []string `json:"resolutions"` // e.g., ["144p", "360p", "720p"]
+    StreamName string   `json:"stream_name"`
+    InputURL   string   `json:"input_url"`
+    Resolutions []string `json:"resolutions"`
+    Codec      string   `json:"codec"`
 }
 
 type TranscodeJob struct {
