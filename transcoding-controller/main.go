@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"log"
 	"net/http"
-	"strings"
 )
 
 var resolutionMap = map[string]struct {
