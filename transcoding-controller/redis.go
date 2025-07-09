@@ -37,18 +37,19 @@ func StoreJobMetadata(jobID string, req TranscodeRequest) error {
 	key := fmt.Sprintf("job:%s", jobID)
 	log.Printf("🔄 Storing job metadata with key: %s", key)
 
-	err := redisClient.HSet(ctx, key, map[string]interface{}{
+	data := map[string]interface{}{
 		"stream_name": req.StreamName,
 		"input_url":   req.InputURL,
 		"codec":       req.Codec,
-		"status":      "submitted",
-	}).Err()
-	if err != nil {
+	}
+
+	if err := redisClient.HSet(ctx, key, data).Err(); err != nil {
 		log.Printf("❌ Redis HSET error: %v", err)
 		return err
 	}
 
-	log.Printf("✅ Job metadata stored for jobID %s", jobID)
+	log.Printf("✅ Job metadata stored in Redis hash for jobID %s", jobID)
 	return nil
 }
+
 
