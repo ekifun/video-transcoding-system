@@ -18,6 +18,7 @@ var (
 	ctx          = context.Background()
 	requiredReps = []string{"144p", "360p", "720p"}
 	segmentsDir  = "/segments"
+	publicHost   = os.Getenv("PUBLIC_HOST") // e.g., http://13.57.143.121
 )
 
 var redisClient = redis.NewClient(&redis.Options{
@@ -69,7 +70,9 @@ func main() {
 
 func generateMPD(jobID string) {
 	jobDir := filepath.Join(segmentsDir, jobID)
-	outputPath := filepath.Join(jobDir, "manifest.mpd")
+	localMPDPath := filepath.Join(jobDir, "manifest.mpd")
+	publicMPDURL := fmt.Sprintf("%s/%s/manifest.mpd", strings.TrimRight(publicHost, "/"), jobID)
+
 	os.MkdirAll(jobDir, 0755)
 
 	redisKey := fmt.Sprintf("job:%s", jobID)
@@ -82,7 +85,7 @@ func generateMPD(jobID string) {
 	args := []string{
 		"-dash", "4000",
 		"-rap", "-frag-rap",
-		"-out", outputPath,
+		"-out", localMPDPath,
 	}
 
 	switch strings.ToLower(codec) {
@@ -113,13 +116,13 @@ func generateMPD(jobID string) {
 		return
 	}
 
-	log.Printf("✅ MPD generated: %s", outputPath)
+	log.Printf("✅ MPD generated: %s", localMPDPath)
 
 	// ✅ Persist metadata to DB
 	streamName, _ := redisClient.HGet(ctx, redisKey, "stream_name").Result()
 	originalURL, _ := redisClient.HGet(ctx, redisKey, "original_url").Result()
 
-	if err := SaveJobToDB(jobID, streamName, originalURL, codec, strings.Join(requiredReps, ","), outputPath); err != nil {
+	if err := SaveJobToDB(jobID, streamName, originalURL, codec, strings.Join(requiredReps, ","), publicMPDURL); err != nil {
 		log.Printf("⚠️ Failed to persist job to DB: %v", err)
 	} else {
 		log.Printf("✅ Job metadata persisted to DB for job %s", jobID)
