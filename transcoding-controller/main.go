@@ -30,6 +30,7 @@ func main() {
 
 	InitKafka()
 	InitRedis()
+	InitDB() // ✅ Initialize SQLite DB connection
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -37,6 +38,7 @@ func main() {
 	})
 
 	http.HandleFunc("/transcode", handleTranscodeRequest)
+	http.HandleFunc("/jobs", handleListJobs) // ✅ Add /jobs endpoint
 
 	log.Println("🚀 Controller running on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -102,4 +104,16 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusAccepted)
 	fmt.Fprintf(w, `{"job_id": "%s", "status": "submitted"}`, jobID)
+}
+
+func handleListJobs(w http.ResponseWriter, r *http.Request) {
+	jobs, err := GetAllTranscodedJobs(50)
+	if err != nil {
+		http.Error(w, "Failed to fetch jobs", http.StatusInternalServerError)
+		log.Printf("❌ Failed to fetch jobs: %v", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(jobs)
 }

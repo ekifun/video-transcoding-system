@@ -41,9 +41,12 @@ services:
     environment:
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:9092
+      SQLITE_DB_PATH: /app/db/data/jobs.db   # ✅ for DB query endpoint
     depends_on:
       - kafka
       - redis
+    volumes:
+      - db-data:/app/db/data                 # ✅ required for reading DB
     restart: unless-stopped
     tty: true
 
@@ -86,13 +89,13 @@ services:
       REDIS_ADDR: redis:6379
       KAFKA_BROKER: kafka:9092
       SQLITE_DB_PATH: /app/db/data/jobs.db
-      PUBLIC_HOST: http://13.57.143.121   # ✅ Added for constructing public MPD URLs
+      PUBLIC_HOST: http://13.57.143.121
     depends_on:
       - kafka
       - redis
     volumes:
-      - segments-data:/segments  # ✅ shared transcoded files
-      - db-data:/app/db/data     # ✅ SQLite DB directory
+      - segments-data:/segments   # ✅ shared transcoded files
+      - db-data:/app/db/data      # ✅ SQLite DB directory
     restart: unless-stopped
     tty: true
 
