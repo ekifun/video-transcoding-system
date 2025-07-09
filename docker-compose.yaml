@@ -89,7 +89,7 @@ services:
       REDIS_ADDR: redis:6379
       KAFKA_BROKER: kafka:9092
       SQLITE_DB_PATH: /app/db/data/jobs.db
-      PUBLIC_HOST: http://13.57.143.121
+      PUBLIC_HOST: http://13.57.143.121:8081
     depends_on:
       - kafka
       - redis
