@@ -120,9 +120,9 @@ func generateMPD(jobID string) {
 
 	// ✅ Persist metadata to DB
 	streamName, _ := redisClient.HGet(ctx, redisKey, "stream_name").Result()
-	originalURL, _ := redisClient.HGet(ctx, redisKey, "original_url").Result()
+	inputURL, _ := redisClient.HGet(ctx, redisKey, "input_url").Result()
 
-	if err := SaveJobToDB(jobID, streamName, originalURL, codec, strings.Join(requiredReps, ","), publicMPDURL); err != nil {
+	if err := SaveJobToDB(jobID, streamName, inputURL, codec, strings.Join(requiredReps, ","), publicMPDURL); err != nil {
 		log.Printf("⚠️ Failed to persist job to DB: %v", err)
 	} else {
 		log.Printf("✅ Job metadata persisted to DB for job %s", jobID)

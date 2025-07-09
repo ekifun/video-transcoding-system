@@ -43,13 +43,13 @@ func InitDB() {
 }
 
 // SaveJobToDB inserts or updates a job record into the transcoded_jobs table.
-func SaveJobToDB(jobID, streamName, originalURL, codec, representations, mpdURL string) error {
+func SaveJobToDB(jobID, streamName, inputURL, codec, representations, mpdURL string) error {
 	stmt := `
 	INSERT OR REPLACE INTO transcoded_jobs
 	(job_id, stream_name, input_url, codec, representations, mpd_url)
 	VALUES (?, ?, ?, ?, ?, ?);`
 
-	_, err := DB.Exec(stmt, jobID, streamName, originalURL, codec, representations, mpdURL)
+	_, err := DB.Exec(stmt, jobID, streamName, inputURL, codec, representations, mpdURL)
 	if err != nil {
 		return fmt.Errorf("❌ DB insert error: %w", err)
 	}
