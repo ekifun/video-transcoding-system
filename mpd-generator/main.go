@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"video-transcoding-system/db" // ✅ Import DB module
-
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
 )
