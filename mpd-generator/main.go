@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"video-transcoding-system/db" // ✅ Import DB module
+
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
 )
@@ -17,15 +19,13 @@ import (
 var (
 	ctx          = context.Background()
 	requiredReps = []string{"144p", "360p", "720p"}
-	segmentsDir  = "/segments" // Shared volume for transcoded files
+	segmentsDir  = "/segments"
 )
 
-// Redis client for codec lookup
 var redisClient = redis.NewClient(&redis.Options{
-	Addr: os.Getenv("REDIS_ADDR"), // Example: "redis:6379"
+	Addr: os.Getenv("REDIS_ADDR"),
 })
 
-// Kafka message structure
 type MPDMessage struct {
 	JobID  string `json:"job_id"`
 	Status string `json:"status"`
@@ -34,7 +34,6 @@ type MPDMessage struct {
 func main() {
 	log.Println("🚀 Starting MPD Generator...")
 
-	// ✅ Verify Redis connectivity
 	if _, err := redisClient.Ping(ctx).Result(); err != nil {
 		log.Fatalf("❌ Failed to connect to Redis: %v", err)
 	}
@@ -84,7 +83,6 @@ func generateMPD(jobID string) {
 		"-out", outputPath,
 	}
 
-	// ✅ Append AVC profile only when applicable
 	switch strings.ToLower(codec) {
 	case "h264", "avc":
 		args = append([]string{"-profile", "dashavc264:live"}, args...)
@@ -114,6 +112,14 @@ func generateMPD(jobID string) {
 	}
 
 	log.Printf("✅ MPD generated: %s", outputPath)
+
+	// ✅ Persist metadata to DB
+	streamName, _ := redisClient.HGet(ctx, redisKey, "stream_name").Result()
+	originalURL, _ := redisClient.HGet(ctx, redisKey, "original_url").Result()
+
+	if err := db.SaveJobToDB(jobID, streamName, originalURL, codec, requiredReps, outputPath); err != nil {
+		log.Printf("⚠️ Failed to persist job to DB: %v", err)
+	} else {
+		log.Printf("✅ Job metadata persisted to DB for job %s", jobID)
+	}
 }
-
-
