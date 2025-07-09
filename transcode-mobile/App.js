@@ -8,8 +8,11 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
+  Platform,
+  ToastAndroid,
 } from 'react-native';
 import Checkbox from 'expo-checkbox';
+import * as Clipboard from 'expo-clipboard';
 
 export default function App() {
   const [inputURL, setInputURL] = useState(
@@ -52,7 +55,7 @@ export default function App() {
       input_url: inputURL,
       resolutions: selected,
       codec,
-      stream_name: "big-bunny-1080p", // or allow user input
+      stream_name: "big-bunny-1080p",
     };
 
     try {
@@ -65,7 +68,7 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         Alert.alert("✅ Job Submitted", `Job ID: ${data.job_id}`);
-        loadJobs(); // Refresh jobs list
+        loadJobs();
       } else {
         Alert.alert("❌ Submission Failed", JSON.stringify(data));
       }
@@ -73,6 +76,15 @@ export default function App() {
       Alert.alert("❌ Error", err.message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const copyToClipboard = async (url) => {
+    await Clipboard.setStringAsync(url);
+    if (Platform.OS === 'android') {
+      ToastAndroid.show("📋 MPD URL copied", ToastAndroid.SHORT);
+    } else {
+      Alert.alert("Copied", "MPD URL copied to clipboard");
     }
   };
 
@@ -125,7 +137,9 @@ export default function App() {
           <Text style={styles.jobText}>📦 {job.job_id}</Text>
           <Text>📺 {job.stream_name}</Text>
           <Text>📹 {job.codec} → {job.representations}</Text>
-          <Text numberOfLines={1}>🔗 {job.mpd_url}</Text>
+          <TouchableOpacity onPress={() => copyToClipboard(job.mpd_url)}>
+            <Text style={styles.mpdUrl}>🔗 {job.mpd_url}</Text>
+          </TouchableOpacity>
         </View>
       ))}
     </ScrollView>
@@ -158,5 +172,12 @@ const styles = StyleSheet.create({
   jobText: {
     fontWeight: "bold",
     marginBottom: 4,
+  },
+  mpdUrl: {
+    color: 'blue',
+    marginTop: 5,
+    textDecorationLine: 'underline',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
 });
