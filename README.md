@@ -1,5 +1,8 @@
 # video-transcoding-system
 
+🌐 [Live Demo](https://ekifun.github.io/video-transcoding-system/)  
+📂 [Source Code](https://github.com/ekifun/video-transcoding-system)
+
 Here’s a full README.md file for your video transcoding system that includes:
 Overview of the architecture and components
 Functional responsibilities
