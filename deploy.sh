@@ -5,6 +5,34 @@ set -e
 echo "📁 Navigating to project root..."
 cd "$(dirname "$0")"
 
+# Step 0: Build FFmpeg with libvvenc for VVC support
+echo "🛠️ Building FFmpeg with libvvenc (H.266/VVC support)..."
+
+# Check if ffmpeg-vvc already exists
+if [ ! -d "./ffmpeg-vvc-build" ]; then
+  echo "📦 Cloning and building vvenc and FFmpeg..."
+  mkdir -p ffmpeg-vvc-build && cd ffmpeg-vvc-build
+
+  # Clone vvenc
+  git clone https://github.com/fraunhoferhhi/vvenc.git
+  cd vvenc
+  mkdir build && cd build
+  cmake .. -DCMAKE_BUILD_TYPE=Release
+  make -j$(nproc)
+  sudo make install
+  cd ../../
+
+  # Clone FFmpeg
+  git clone https://github.com/FFmpeg/FFmpeg.git
+  cd FFmpeg
+  ./configure --enable-gpl --enable-nonfree --enable-libvvenc
+  make -j$(nproc)
+  sudo make install
+  cd ../..
+else
+  echo "✅ ffmpeg-vvc-build directory already exists. Skipping rebuild."
+fi
+
 # Function to initialize Go module in a given directory
 init_go_mod() {
   local service_dir=$1
@@ -54,4 +82,3 @@ fi
 
 echo "✅ Deployment complete."
 echo "🌐 Access Transcoding Controller: http://13.57.143.121:8080/transcode"
-
