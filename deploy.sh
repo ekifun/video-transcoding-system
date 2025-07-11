@@ -5,10 +5,32 @@ set -e
 echo "📁 Navigating to project root..."
 cd "$(dirname "$0")"
 
+# Ensure build dependencies are installed (Amazon Linux 2, RHEL/CentOS)
+install_build_tools_if_needed() {
+  if ! command -v cmake &> /dev/null; then
+    echo "🔧 cmake not found, installing build tools..."
+
+    if [ -f /etc/os-release ] && grep -qi "amzn" /etc/os-release; then
+      sudo yum update -y
+      sudo yum groupinstall "Development Tools" -y
+      sudo yum install cmake3 -y
+      sudo alternatives --install /usr/bin/cmake cmake /usr/bin/cmake3 1 --force
+    elif [ -f /etc/debian_version ]; then
+      sudo apt update
+      sudo apt install -y build-essential cmake
+    else
+      echo "❌ Unsupported Linux distribution. Please install cmake manually."
+      exit 1
+    fi
+  else
+    echo "✅ cmake is already installed."
+  fi
+}
+
 # Step 0: Build FFmpeg with libvvenc for VVC support
 echo "🛠️ Building FFmpeg with libvvenc (H.266/VVC support)..."
+install_build_tools_if_needed
 
-# Check if ffmpeg-vvc already exists
 if [ ! -d "./ffmpeg-vvc-build" ]; then
   echo "📦 Cloning and building vvenc and FFmpeg..."
   mkdir -p ffmpeg-vvc-build && cd ffmpeg-vvc-build
