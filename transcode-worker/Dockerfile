@@ -32,8 +32,9 @@
         cmake .. -DCMAKE_BUILD_TYPE=Release && \
         make -j$(nproc) && make install
     
-    # Manually install libvvenc.pc to support pkg-config detection
-    RUN echo -e "prefix=/usr/local\n\
+    # Ensure pkgconfig directory exists and register vvenc
+    RUN mkdir -p /usr/local/lib/pkgconfig && \
+        echo -e "prefix=/usr/local\n\
     exec_prefix=\${prefix}\n\
     libdir=\${exec_prefix}/lib\n\
     includedir=\${prefix}/include\n\
