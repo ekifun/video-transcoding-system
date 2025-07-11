@@ -54,16 +54,21 @@
         echo "[DEBUG] pkg-config --libs libvvenc:" && pkg-config --libs libvvenc && \
         echo "[DEBUG] pkg-config --cflags libvvenc:" && pkg-config --cflags libvvenc
     
-    # Step 4: Build FFmpeg with libvvenc
-    RUN git clone https://github.com/FFmpeg/FFmpeg.git && \
-        cd FFmpeg && \
-        ./configure \
-          --pkg-config-flags="--static" \
-          --extra-cflags="-I/usr/local/include" \
-          --extra-ldflags="-L/usr/local/lib -L/usr/local/lib64" \
-          --enable-gpl --enable-nonfree \
-          --enable-libx264 --enable-libx265 --enable-libvvenc && \
-        make -j$(nproc) && make install
+    # 🐞 Optional interactive debug shell
+    CMD ["/bin/bash"]
+    
+    # Step 4: (Skipped during debugging) Build FFmpeg with libvvenc
+    # Uncomment these lines after debugging
+    # RUN git clone https://github.com/FFmpeg/FFmpeg.git && \
+    #     cd FFmpeg && \
+    #     ./configure \
+    #       --pkg-config-flags="--static" \
+    #       --extra-cflags="-I/usr/local/include" \
+    #       --extra-ldflags="-L/usr/local/lib -L/usr/local/lib64" \
+    #       --enable-gpl --enable-nonfree \
+    #       --enable-libx264 --enable-libx265 --enable-libvvenc && \
+    #     make -j$(nproc) && make install
+    
     
     # ---------- Final Stage: Runtime Image ----------
     FROM debian:bullseye
