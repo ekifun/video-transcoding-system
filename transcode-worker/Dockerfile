@@ -17,7 +17,7 @@
     RUN apt-get update && apt-get install -y \
       git cmake build-essential yasm pkg-config \
       wget curl unzip nasm libx264-dev libx265-dev libnuma-dev \
-      zlib1g-dev libfdk-aac-dev libass-dev libfreetype6-dev libvorbis-dev \
+      zlib1g-dev libass-dev libfreetype6-dev libvorbis-dev \
       libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev libtool automake \
       ca-certificates && \
       rm -rf /var/lib/apt/lists/*
@@ -40,15 +40,17 @@
     # ---------- Final Image ----------
     FROM debian:bullseye
     
+    ENV LD_LIBRARY_PATH=/usr/local/lib
+    ENV DEBIAN_FRONTEND=noninteractive
+    
     RUN apt-get update && apt-get install -y \
       ca-certificates && \
       rm -rf /var/lib/apt/lists/*
     
-    # Copy FFmpeg from ffmpeg-builder
+    # Copy FFmpeg and libvvenc
     COPY --from=ffmpeg-builder /usr/local/bin/ffmpeg /usr/local/bin/ffmpeg
     COPY --from=ffmpeg-builder /usr/local/bin/ffprobe /usr/local/bin/ffprobe
     COPY --from=ffmpeg-builder /usr/local/lib/libvvenc* /usr/local/lib/
-    ENV LD_LIBRARY_PATH=/usr/local/lib
     
     # Copy transcode-worker binary
     WORKDIR /app
