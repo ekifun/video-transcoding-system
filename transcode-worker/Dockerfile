@@ -14,6 +14,7 @@
     
     ENV DEBIAN_FRONTEND=noninteractive
     
+    # Install dependencies
     RUN apt-get update && apt-get install -y \
       git cmake build-essential yasm pkg-config \
       wget curl unzip nasm libx264-dev libx265-dev libnuma-dev \
@@ -30,6 +31,9 @@
         cmake .. -DCMAKE_BUILD_TYPE=Release && \
         make -j$(nproc) && make install
     
+    # Set PKG_CONFIG_PATH so FFmpeg can detect libvvenc
+    ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
+    
     # Build FFmpeg with libvvenc
     RUN git clone https://github.com/FFmpeg/FFmpeg.git && \
         cd FFmpeg && \
@@ -37,12 +41,13 @@
         make -j$(nproc) && make install
     
     
-    # ---------- Final Image ----------
+    # ---------- Final Stage: Runtime Image ----------
     FROM debian:bullseye
     
-    ENV LD_LIBRARY_PATH=/usr/local/lib
     ENV DEBIAN_FRONTEND=noninteractive
+    ENV LD_LIBRARY_PATH=/usr/local/lib
     
+    # Install runtime dependencies
     RUN apt-get update && apt-get install -y \
       ca-certificates && \
       rm -rf /var/lib/apt/lists/*
@@ -52,7 +57,7 @@
     COPY --from=ffmpeg-builder /usr/local/bin/ffprobe /usr/local/bin/ffprobe
     COPY --from=ffmpeg-builder /usr/local/lib/libvvenc* /usr/local/lib/
     
-    # Copy transcode-worker binary
+    # Copy Go binary
     WORKDIR /app
     COPY --from=builder /app/transcode-worker /app/transcode-worker
     
