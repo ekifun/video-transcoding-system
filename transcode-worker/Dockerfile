@@ -32,7 +32,7 @@
     
     # Step 2: Manually install headers under vvenc/
     RUN mkdir -p /usr/local/include/vvenc && \
-        cp -r /opt/vvenc/source/Lib/vvenc/* /usr/local/include/vvenc/
+        cp -r /opt/vvenc/source/Lib/vvenc/*.h /usr/local/include/vvenc/
     
     # Step 3: Create a valid pkg-config file for libvvenc
     RUN mkdir -p /usr/local/lib/pkgconfig && \
