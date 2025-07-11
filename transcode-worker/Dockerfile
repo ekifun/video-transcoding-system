@@ -8,7 +8,6 @@
     RUN go mod tidy
     RUN go build -o transcode-worker .
     
-    
     # ---------- Stage 2: Build FFmpeg with libvvenc ----------
     FROM debian:bullseye AS ffmpeg-builder
     
@@ -67,7 +66,6 @@
           --enable-gpl --enable-nonfree \
           --enable-libx264 --enable-libx265 --enable-libvvenc && \
         make -j$(nproc) && make install
-    
     
     # ---------- Final Stage: Runtime Image ----------
     FROM debian:bullseye
