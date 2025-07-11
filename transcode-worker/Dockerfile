@@ -25,52 +25,47 @@
     
     WORKDIR /opt
     
-    # ✅ Step 1: Clone and build vvenc from specific release
+    # Step 1: Clone and build vvenc (>= 1.6.1)
     RUN git clone --branch v1.6.1 https://github.com/fraunhoferhhi/vvenc.git && \
         cd vvenc && mkdir build && cd build && \
         cmake .. -DCMAKE_BUILD_TYPE=Release && \
         make -j$(nproc) && make install
     
-    # ✅ Step 2: Manually install libvvenc.pc and validate existence
+    # Step 2: Manually create valid libvvenc.pc file
     RUN mkdir -p /usr/local/lib/pkgconfig && \
-        echo -e "prefix=/usr/local\n\
-    exec_prefix=\${prefix}\n\
-    libdir=\${exec_prefix}/lib\n\
-    includedir=\${prefix}/include\n\
-    \n\
-    Name: vvenc\n\
-    Description: Fraunhofer Versatile Video Encoder\n\
-    Version: 1.6.1\n\
-    Libs: -L\${libdir} -lvvenc\n\
-    Cflags: -I\${includedir}" > /usr/local/lib/pkgconfig/libvvenc.pc && \
-        echo "[DEBUG] Confirm libvvenc.pc is created:" && \
-        ls -l /usr/local/lib/pkgconfig/libvvenc.pc
+        cat <<EOF > /usr/local/lib/pkgconfig/libvvenc.pc
+    prefix=/usr/local
+    exec_prefix=\${prefix}
+    libdir=\${exec_prefix}/lib
+    includedir=\${prefix}/include
     
-    # ✅ Step 3: Test if pkg-config can detect it
+    Name: vvenc
+    Description: Fraunhofer Versatile Video Encoder
+    Version: 1.6.1
+    Libs: -L\${libdir} -lvvenc
+    Cflags: -I\${includedir}
+    EOF
+    
     ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
     ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64"
     
-    RUN echo "[DEBUG] pkg-config search path:" && echo $PKG_CONFIG_PATH && \
-        echo "[DEBUG] List all .pc files known to pkg-config:" && \
-        pkg-config --list-all | grep vvenc || true && \
-        echo "[DEBUG] pkg-config modversion:" && \
-        pkg-config --modversion libvvenc && \
-        echo "[DEBUG] pkg-config --libs:" && \
-        pkg-config --libs libvvenc && \
-        echo "[DEBUG] pkg-config --cflags:" && \
-        pkg-config --cflags libvvenc
+    # Step 3: Debug pkg-config
+    RUN echo "[DEBUG] Checking libvvenc.pc:" && \
+        cat /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo "[DEBUG] pkg-config search path: $PKG_CONFIG_PATH" && \
+        echo "[DEBUG] pkg-config --modversion libvvenc:" && pkg-config --modversion libvvenc && \
+        echo "[DEBUG] pkg-config --libs libvvenc:" && pkg-config --libs libvvenc && \
+        echo "[DEBUG] pkg-config --cflags libvvenc:" && pkg-config --cflags libvvenc
     
-    # ✅ Step 4: Build FFmpeg with libvvenc support
+    # Step 4: Build FFmpeg with libvvenc
     RUN git clone https://github.com/FFmpeg/FFmpeg.git && \
         cd FFmpeg && \
-        echo "[DEBUG] Begin FFmpeg configure..." && \
         ./configure \
           --pkg-config-flags="--static" \
           --extra-cflags="-I/usr/local/include" \
           --extra-ldflags="-L/usr/local/lib -L/usr/local/lib64" \
           --enable-gpl --enable-nonfree \
           --enable-libx264 --enable-libx265 --enable-libvvenc && \
-        echo "[DEBUG] Configure successful. Start building FFmpeg..." && \
         make -j$(nproc) && make install
     
     
