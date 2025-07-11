@@ -8,6 +8,7 @@
     RUN go mod tidy
     RUN go build -o transcode-worker .
     
+    
     # ---------- Stage 2: Build FFmpeg with libvvenc ----------
     FROM debian:bullseye AS ffmpeg-builder
     
@@ -24,7 +25,7 @@
     
     WORKDIR /opt
     
-    # Step 1: Clone and build vvenc (>= 1.6.1)
+    # Step 1: Clone and build vvenc
     RUN git clone --branch v1.6.1 https://github.com/fraunhoferhhi/vvenc.git && \
         cd vvenc && mkdir build && cd build && \
         cmake .. -DCMAKE_BUILD_TYPE=Release && \
@@ -48,7 +49,7 @@
     ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
     ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64"
     
-    # Step 3: Debug pkg-config
+    # Step 3: Validate pkg-config
     RUN echo "[DEBUG] Checking libvvenc.pc:" && \
         cat /usr/local/lib/pkgconfig/libvvenc.pc && \
         echo "[DEBUG] pkg-config search path: $PKG_CONFIG_PATH" && \
@@ -66,6 +67,7 @@
           --enable-gpl --enable-nonfree \
           --enable-libx264 --enable-libx265 --enable-libvvenc && \
         make -j$(nproc) && make install
+    
     
     # ---------- Final Stage: Runtime Image ----------
     FROM debian:bullseye
