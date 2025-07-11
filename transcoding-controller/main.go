@@ -23,6 +23,7 @@ var resolutionMap = map[string]struct {
 var validCodecs = map[string]bool{
 	"h264": true,
 	"hevc": true,
+	"vvc":  true, // ✅ Add this line
 }
 
 func main() {
