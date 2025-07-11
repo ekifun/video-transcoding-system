@@ -30,20 +30,18 @@
         cmake .. -DCMAKE_BUILD_TYPE=Release && \
         make -j$(nproc) && make install
     
-    # Step 2: Create a valid pkg-config file for libvvenc
+    # Step 2: Create a valid pkg-config file for libvvenc (no heredoc)
     RUN mkdir -p /usr/local/lib/pkgconfig && \
-        cat <<EOF > /usr/local/lib/pkgconfig/libvvenc.pc
-    prefix=/usr/local
-    exec_prefix=\${prefix}
-    libdir=\${exec_prefix}/lib
-    includedir=\${prefix}/include
-    
-    Name: vvenc
-    Description: Fraunhofer Versatile Video Encoder
-    Version: 1.6.1
-    Libs: -L\${libdir} -lvvenc
-    Cflags: -I\${includedir}
-    EOF
+        echo "prefix=/usr/local" > /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo "exec_prefix=\${prefix}" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo "libdir=\${exec_prefix}/lib" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo "includedir=\${prefix}/include" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo "" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo "Name: vvenc" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo "Description: Fraunhofer Versatile Video Encoder" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo "Version: 1.6.1" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo "Libs: -L\${libdir} -lvvenc" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo "Cflags: -I\${includedir}" >> /usr/local/lib/pkgconfig/libvvenc.pc
     
     ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
     ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64"
