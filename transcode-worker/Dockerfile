@@ -51,6 +51,7 @@
     # Step 3: Debug pkg-config
     RUN echo "[DEBUG] Checking libvvenc.pc:" && \
         cat /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo "[DEBUG] pkg-config search path: $PKG_CONFIG_PATH" && \
         echo "[DEBUG] pkg-config --modversion libvvenc:" && pkg-config --modversion libvvenc && \
         echo "[DEBUG] pkg-config --libs libvvenc:" && pkg-config --libs libvvenc && \
         echo "[DEBUG] pkg-config --cflags libvvenc:" && pkg-config --cflags libvvenc
@@ -58,7 +59,7 @@
     # Step 4: Build FFmpeg with libvvenc
     RUN git clone https://github.com/FFmpeg/FFmpeg.git && \
         cd FFmpeg && \
-        PKG_CONFIG_PATH="/usr/local/lib/pkgconfig" ./configure \
+        ./configure \
           --pkg-config-flags="--static" \
           --extra-cflags="-I/usr/local/include" \
           --extra-ldflags="-L/usr/local/lib -L/usr/local/lib64" \
