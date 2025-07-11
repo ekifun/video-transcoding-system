@@ -30,11 +30,11 @@
         cmake .. -DCMAKE_BUILD_TYPE=Release && \
         make -j$(nproc) && make install
     
-    # Step 1.5: Create expected include folder for FFmpeg header check
+    # Step 2: Manually install headers under vvenc/
     RUN mkdir -p /usr/local/include/vvenc && \
-        ln -s /usr/local/include/vvenc.h /usr/local/include/vvenc/vvenc.h
+        cp -r /opt/vvenc/source/Lib/vvenc/* /usr/local/include/vvenc/
     
-    # Step 2: Create a valid pkg-config file for libvvenc (no heredoc)
+    # Step 3: Create a valid pkg-config file for libvvenc
     RUN mkdir -p /usr/local/lib/pkgconfig && \
         echo "prefix=/usr/local" > /usr/local/lib/pkgconfig/libvvenc.pc && \
         echo "exec_prefix=\${prefix}" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
@@ -50,15 +50,14 @@
     ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
     ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64"
     
-    # Step 3: Debug pkg-config
+    # Step 4: Debug pkg-config
     RUN echo "[DEBUG] Checking libvvenc.pc:" && \
         cat /usr/local/lib/pkgconfig/libvvenc.pc && \
-        echo "[DEBUG] pkg-config search path: $PKG_CONFIG_PATH" && \
         echo "[DEBUG] pkg-config --modversion libvvenc:" && pkg-config --modversion libvvenc && \
-        echo "[DEBUG] pkg-config --libs libvvenc:" && pkg-config --libs libvvenc && \
-        echo "[DEBUG] pkg-config --cflags libvvenc:" && pkg-config --cflags libvvenc
+        echo "[DEBUG] pkg-config --cflags libvvenc:" && pkg-config --cflags libvvenc && \
+        echo "[DEBUG] pkg-config --libs libvvenc:" && pkg-config --libs libvvenc
     
-    # Step 4: Build FFmpeg with libvvenc
+    # Step 5: Build FFmpeg with libvvenc
     RUN git clone https://github.com/FFmpeg/FFmpeg.git && \
         cd FFmpeg && \
         ./configure \
