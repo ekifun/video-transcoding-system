@@ -25,13 +25,13 @@
     
     WORKDIR /opt
     
-    # Step 1: Clone and build vvenc
+    # Step 1: Clone and build vvenc (>= v1.6.1)
     RUN git clone --branch v1.6.1 https://github.com/fraunhoferhhi/vvenc.git && \
         cd vvenc && mkdir build && cd build && \
         cmake .. -DCMAKE_BUILD_TYPE=Release && \
         make -j$(nproc) && make install
     
-    # Step 2: Manually create valid libvvenc.pc file
+    # Step 2: Create a valid pkg-config file for libvvenc
     RUN mkdir -p /usr/local/lib/pkgconfig && \
         cat <<EOF > /usr/local/lib/pkgconfig/libvvenc.pc
     prefix=/usr/local
@@ -49,7 +49,7 @@
     ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
     ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64"
     
-    # Step 3: Validate pkg-config
+    # Step 3: Debug pkg-config
     RUN echo "[DEBUG] Checking libvvenc.pc:" && \
         cat /usr/local/lib/pkgconfig/libvvenc.pc && \
         echo "[DEBUG] pkg-config search path: $PKG_CONFIG_PATH" && \
