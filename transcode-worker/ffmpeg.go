@@ -61,13 +61,15 @@ func DownloadInput(inputURL string, jobID string) (string, error) {
 	return localPath, nil
 }
 
-// MapCodecToFFmpeg maps "h264" and "hevc" to FFmpeg codec names
+// MapCodecToFFmpeg maps codec names to FFmpeg encoder names
 func MapCodecToFFmpeg(codec string) string {
 	switch codec {
 	case "hevc", "h265":
 		return "libx265"
 	case "h264":
 		return "libx264"
+	case "vvc", "h266":
+		return "libvvenc"
 	default:
 		log.Printf("⚠️ Unsupported codec '%s'. Defaulting to h264 (libx264)", codec)
 		return "libx264"
@@ -79,34 +81,28 @@ func HandleTranscodeJob(job TranscodeJob) {
 		job.Codec = "h264" // Default to H.264
 	}
 
-	// 🧩 Enhancement 1: Log input job parameters
 	log.Printf("📥 [Job %s] Received Job | Codec=%s | Resolution=%s | Bitrate=%s | InputURL=%s | Representation=%s",
 		job.JobID, job.Codec, job.Resolution, job.Bitrate, job.InputURL, job.Representation)
 
-	// 🧩 Enhancement 2: Validate input fields
 	if job.Resolution == "" || job.Bitrate == "" {
 		log.Printf("⚠️ [Job %s] Missing resolution or bitrate. Skipping job.", job.JobID)
 		return
 	}
 
-	// ✅ Define Redis key before use
 	redisKey := fmt.Sprintf("job:%s", job.JobID)
 
-	// 🔍 Check if existing key has wrong type (string instead of hash)
 	valType, err := redisClient.Type(ctx, redisKey).Result()
 	if err == nil && valType != "hash" && valType != "none" {
 		log.Printf("⚠️ [Job %s] Redis key has wrong type (%s), deleting it...", job.JobID, valType)
 		redisClient.Del(ctx, redisKey)
 	}
 
-	// ✅ Write codec to Redis early so it's available before FFmpeg starts
 	if err := redisClient.HSet(ctx, redisKey, "codec", job.Codec).Err(); err != nil {
 		log.Printf("❌ [Job %s] Failed to write codec to Redis: %v", job.JobID, err)
 	} else {
 		log.Printf("✅ [Job %s] Wrote codec to Redis: %s", job.JobID, job.Codec)
 	}
 
-	// Map to FFmpeg encoder
 	ffmpegCodec := MapCodecToFFmpeg(job.Codec)
 
 	localInput, err := DownloadInput(job.InputURL, job.JobID)
@@ -118,9 +114,10 @@ func HandleTranscodeJob(job TranscodeJob) {
 
 	log.Printf("📥 [Job %s] Input downloaded to: %s", job.JobID, localInput)
 
+	// Use .mp4 for all outputs (including VVC encapsulated in MP4)
 	outputPath := filepath.Join(outputDir, fmt.Sprintf("%s_%s.mp4", job.JobID, job.Representation))
 
-	cmd := exec.Command("ffmpeg",
+	args := []string{
 		"-i", localInput,
 		"-vf", fmt.Sprintf("scale=%s", job.Resolution),
 		"-c:v", ffmpegCodec,
@@ -129,11 +126,24 @@ func HandleTranscodeJob(job TranscodeJob) {
 		"-keyint_min", "48",
 		"-sc_threshold", "0",
 		"-an",
+	}
+
+	// VVC-specific tuning (optional)
+	if job.Codec == "vvc" || job.Codec == "h266" {
+		args = append(args,
+			"-preset", "medium",  // other options: fast, slow
+			"-threads", "4",
+			"-f", "mp4",
+		)
+	}
+
+	args = append(args,
 		"-movflags", "+faststart+frag_keyframe+empty_moov+default_base_moof",
 		"-y", outputPath,
 	)
 
-	log.Printf("⚙️ [Job %s] Running FFmpeg: %v", job.JobID, cmd.String())
+	cmd := exec.Command("ffmpeg", args...)
+	log.Printf("⚙️ [Job %s] Running FFmpeg: %s", job.JobID, cmd.String())
 
 	stderr, err := cmd.CombinedOutput()
 	if err != nil {
@@ -141,9 +151,8 @@ func HandleTranscodeJob(job TranscodeJob) {
 		return
 	}
 
-	log.Printf("✅ [Job %s] DASH segment generated: %s", job.JobID, outputPath)
+	log.Printf("✅ [Job %s] Segment generated: %s", job.JobID, outputPath)
 
-	// ✅ Update Redis progress (status + output path)
 	if err := redisClient.HSet(ctx, redisKey,
 		job.Representation, "done",
 		fmt.Sprintf("%s_output", job.Representation), outputPath,
@@ -161,7 +170,3 @@ func HandleTranscodeJob(job TranscodeJob) {
 	log.Printf("📦 [Job %s] Updated Redis → %s = done, %s_output = %s",
 		job.JobID, job.Representation, job.Representation, outputPath)
 }
-
-
-
-
