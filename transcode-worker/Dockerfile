@@ -33,7 +33,7 @@
     
     # Step 2: Manually create valid libvvenc.pc file
     RUN mkdir -p /usr/local/lib/pkgconfig && \
-    cat <<EOF > /usr/local/lib/pkgconfig/libvvenc.pc
+        cat <<EOF > /usr/local/lib/pkgconfig/libvvenc.pc
     prefix=/usr/local
     exec_prefix=\${prefix}
     libdir=\${exec_prefix}/lib
