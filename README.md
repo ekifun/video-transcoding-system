@@ -98,7 +98,7 @@ cd transcode-mobile
 ./deploy-transcode-mobile-app.sh
 ```
 Use the Expo app to scan the QR code and interact with the system.
-### 4. Testing the System
+## 4. Testing the System
 Submit a Transcode Job
 ```bash
 curl -X POST http://localhost:8080/transcode \
@@ -131,7 +131,7 @@ Check Codec of Segment
 ```bash
 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 file.mp4
 ```
-### 5. Versioning
+## 5. Versioning
 
 v1.0.0: Initial H.264/AVC support and DASH output
 
