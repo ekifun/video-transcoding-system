@@ -27,12 +27,14 @@
     # Step 1: Clone and build vvenc (>= v1.6.1)
     RUN git clone --branch v1.6.1 https://github.com/fraunhoferhhi/vvenc.git && \
         cd vvenc && mkdir build && cd build && \
-        cmake .. -DCMAKE_BUILD_TYPE=Release && \
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local && \
         make -j$(nproc) && make install
     
-    # Step 2: Manually install headers under vvenc/
+    # Step 2: Copy headers and static libs to proper location
     RUN mkdir -p /usr/local/include/vvenc && \
-        cp -r /opt/vvenc/source/Lib/vvenc/*.h /usr/local/include/vvenc/
+        cp -r /opt/vvenc/install/include/vvenc/* /usr/local/include/vvenc/ && \
+        cp -r /opt/vvenc/install/lib/libvvenc* /usr/local/lib/ && \
+        ldconfig
     
     # Step 3: Create a valid pkg-config file for libvvenc
     RUN mkdir -p /usr/local/lib/pkgconfig && \
@@ -50,14 +52,7 @@
     ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
     ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64"
     
-    # Step 4: Debug pkg-config
-    RUN echo "[DEBUG] Checking libvvenc.pc:" && \
-        cat /usr/local/lib/pkgconfig/libvvenc.pc && \
-        echo "[DEBUG] pkg-config --modversion libvvenc:" && pkg-config --modversion libvvenc && \
-        echo "[DEBUG] pkg-config --cflags libvvenc:" && pkg-config --cflags libvvenc && \
-        echo "[DEBUG] pkg-config --libs libvvenc:" && pkg-config --libs libvvenc
-    
-    # Step 5: Build FFmpeg with libvvenc
+    # Step 4: Clone and build FFmpeg with libvvenc
     RUN git clone https://github.com/FFmpeg/FFmpeg.git && \
         cd FFmpeg && \
         ./configure \
