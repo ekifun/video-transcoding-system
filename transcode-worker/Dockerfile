@@ -36,25 +36,29 @@
         cp -r /opt/vvenc/install/lib/libvvenc* /usr/local/lib/ && \
         ldconfig
     
-    # Step 3: Create pkg-config file for libvvenc
+    # Step 3: Create pkg-config file using heredoc
     RUN mkdir -p /usr/local/lib/pkgconfig && \
-        echo "prefix=/usr/local" > /usr/local/lib/pkgconfig/libvvenc.pc && \
-        echo "exec_prefix=\${prefix}" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
-        echo "libdir=\${exec_prefix}/lib" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
-        echo "includedir=\${prefix}/include" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
-        echo "" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
-        echo "Name: vvenc" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
-        echo "Description: Fraunhofer Versatile Video Encoder" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
-        echo "Version: 1.6.1" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
-        echo "Libs: -L\${libdir} -lvvenc" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
-        echo "Cflags: -I\${includedir}" >> /usr/local/lib/pkgconfig/libvvenc.pc
+        cat <<EOF > /usr/local/lib/pkgconfig/libvvenc.pc
+    prefix=/usr/local
+    exec_prefix=\${prefix}
+    libdir=\${exec_prefix}/lib
+    includedir=\${prefix}/include
+    
+    Name: vvenc
+    Description: Fraunhofer Versatile Video Encoder
+    Version: 1.6.1
+    Libs: -L\${libdir} -lvvenc -lstdc++
+    Cflags: -I\${includedir}
+    EOF
     
     ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
     ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
+    ENV LDFLAGS="-lstdc++"
+    ENV CXX=g++
+    ENV CC=gcc
     
     # ---------- Stage 3: Debug-Only Container for Interactive FFmpeg Build ----------
     FROM ffmpeg-builder AS debug-ffmpeg
-    
     WORKDIR /opt
     CMD ["/bin/bash"]
     
@@ -66,8 +70,8 @@
         cd FFmpeg && \
         ./configure \
           --pkg-config-flags="--static" \
-          --extra-cflags="-I/usr/local/include" \
-          --extra-ldflags="-L/usr/local/lib -L/usr/local/lib64" \
+          --extra-cflags="$(pkg-config --cflags libvvenc)" \
+          --extra-ldflags="$(pkg-config --libs libvvenc)" \
           --enable-gpl --enable-nonfree \
           --enable-libx264 --enable-libx265 --enable-libvvenc && \
         make -j$(nproc) && make install
