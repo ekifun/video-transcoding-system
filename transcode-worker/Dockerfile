@@ -14,12 +14,12 @@
   ENV DEBIAN_FRONTEND=noninteractive
   
   RUN apt-get update && apt-get install -y \
-      git cmake build-essential yasm pkg-config \
-      wget curl unzip nasm libx264-dev libx265-dev libnuma-dev \
-      zlib1g-dev libass-dev libfreetype6-dev libvorbis-dev \
-      libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev libxcb-shape0-dev \
-      libtool automake ca-certificates && \
-      rm -rf /var/lib/apt/lists/*
+    git cmake build-essential yasm pkg-config \
+    wget curl unzip nasm libx264-dev libx265-dev libnuma-dev \
+    zlib1g-dev libass-dev libfreetype6-dev libvorbis-dev \
+    libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev libtool automake \
+    ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
   
   WORKDIR /opt
   
@@ -29,7 +29,6 @@
       cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/vvenc/install && \
       make -j$(nproc) && make install
   
-  # Install headers and libs
   RUN mkdir -p /usr/local/include/vvenc && \
       cp -r /opt/vvenc/install/include/vvenc/* /usr/local/include/vvenc/ && \
       cp -r /opt/vvenc/install/lib/libvvenc* /usr/local/lib/ && \
@@ -37,7 +36,6 @@
       cp -r /opt/vvenc/install/lib64/libvvenc* /usr/local/lib64/ 2>/dev/null || true && \
       ldconfig
   
-  # Write libvvenc.pc
   RUN mkdir -p /usr/local/lib/pkgconfig && \
       echo "prefix=/usr/local\n\
   exec_prefix=\${prefix}\n\
@@ -76,30 +74,27 @@
   ENV DEBIAN_FRONTEND=noninteractive
   ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
   
-  # ✅ Install all runtime shared library dependencies
   RUN apt-get update && apt-get install -y \
-      ca-certificates \
-      libxcb1 \
-      libxcb-shm0 \
-      libxcb-xfixes0 \
-      libxcb-shape0 \
-      libx264-160 \
-      libx265-199 \
-      libnuma1 \
-      libass9 \
-      libfreetype6 \
-      libvorbis0a \
-      libvorbisenc2 \
-      zlib1g \
-      && rm -rf /var/lib/apt/lists/*
+    ca-certificates \
+    libxcb1 \
+    libxcb-shm0 \
+    libxcb-xfixes0 \
+    libxcb-shape0 \
+    libnuma1 \
+    libass9 \
+    libfreetype6 \
+    libvorbis0a \
+    libvorbisenc2 \
+    zlib1g \
+    && rm -rf /var/lib/apt/lists/*
   
-  # ✅ Copy FFmpeg binary and libraries
+  # Copy FFmpeg and vvenc libs
   COPY --from=ffmpeg-builder-final /usr/local/bin/ffmpeg /usr/local/bin/
   COPY --from=ffmpeg-builder-final /usr/local/bin/ffprobe /usr/local/bin/
   COPY --from=ffmpeg-builder-final /usr/local/lib/ /usr/local/lib/
   COPY --from=ffmpeg-builder-final /usr/local/lib64/ /usr/local/lib64/
   
-  # ✅ Copy Go binary
+  # Copy Go binary
   WORKDIR /app
   COPY --from=builder /app/transcode-worker /app/transcode-worker
   
