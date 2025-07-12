@@ -8,7 +8,7 @@
     RUN go mod tidy
     RUN go build -o transcode-worker .
     
-    # ---------- Stage 2: Build FFmpeg with libvvenc ----------
+    # ---------- Stage 2: Build FFmpeg Dependencies ----------
     FROM debian:bullseye AS ffmpeg-builder
     
     ENV DEBIAN_FRONTEND=noninteractive
@@ -24,19 +24,19 @@
     
     WORKDIR /opt
     
-    # Step 1: Clone and build vvenc (>= v1.6.1)
+    # Step 1: Clone and build libvvenc
     RUN git clone --branch v1.6.1 https://github.com/fraunhoferhhi/vvenc.git && \
         cd vvenc && mkdir build && cd build && \
         cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/vvenc/install && \
         make -j$(nproc) && make install
     
-    # Step 2: Manually install headers and libs
+    # Step 2: Install vvenc headers and libs
     RUN mkdir -p /usr/local/include/vvenc && \
         cp -r /opt/vvenc/install/include/vvenc/* /usr/local/include/vvenc/ && \
         cp -r /opt/vvenc/install/lib/libvvenc* /usr/local/lib/ && \
         ldconfig
     
-    # Step 3: Create a valid pkg-config file for libvvenc
+    # Step 3: Create pkg-config file for libvvenc
     RUN mkdir -p /usr/local/lib/pkgconfig && \
         echo "prefix=/usr/local" > /usr/local/lib/pkgconfig/libvvenc.pc && \
         echo "exec_prefix=\${prefix}" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
@@ -49,11 +49,21 @@
         echo "Libs: -L\${libdir} -lvvenc" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
         echo "Cflags: -I\${includedir}" >> /usr/local/lib/pkgconfig/libvvenc.pc
     
-    # Step 4: Clone and build FFmpeg with libvvenc (exports in same layer)
+    ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+    ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
+    
+    # ---------- Stage 3: Debug-Only Container for Interactive FFmpeg Build ----------
+    FROM ffmpeg-builder AS debug-ffmpeg
+    
+    WORKDIR /opt
+    CMD ["/bin/bash"]
+    
+    # ---------- Stage 4: Build FFmpeg ----------
+    FROM ffmpeg-builder AS ffmpeg-builder-final
+    
+    WORKDIR /opt
     RUN git clone https://github.com/FFmpeg/FFmpeg.git && \
         cd FFmpeg && \
-        export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig" && \
-        export LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64" && \
         ./configure \
           --pkg-config-flags="--static" \
           --extra-cflags="-I/usr/local/include" \
@@ -73,12 +83,12 @@
       rm -rf /var/lib/apt/lists/*
     
     # Copy FFmpeg and vvenc libs
-    COPY --from=ffmpeg-builder /usr/local/bin/ffmpeg /usr/local/bin/
-    COPY --from=ffmpeg-builder /usr/local/bin/ffprobe /usr/local/bin/
-    COPY --from=ffmpeg-builder /usr/local/lib/libvvenc* /usr/local/lib/
-    COPY --from=ffmpeg-builder /usr/local/lib64/libvvenc* /usr/local/lib64/ || true
+    COPY --from=ffmpeg-builder-final /usr/local/bin/ffmpeg /usr/local/bin/
+    COPY --from=ffmpeg-builder-final /usr/local/bin/ffprobe /usr/local/bin/
+    COPY --from=ffmpeg-builder-final /usr/local/lib/libvvenc* /usr/local/lib/
+    COPY --from=ffmpeg-builder-final /usr/local/lib64/libvvenc* /usr/local/lib64/ || true
     
-    # Copy transcode worker binary
+    # Copy the Go binary
     WORKDIR /app
     COPY --from=builder /app/transcode-worker /app/transcode-worker
     
