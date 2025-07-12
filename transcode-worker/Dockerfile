@@ -36,20 +36,10 @@
         cp -r /opt/vvenc/install/lib/libvvenc* /usr/local/lib/ && \
         ldconfig
     
-    # Step 3: Create pkg-config file using properly quoted heredoc
+    # Step 3: Create pkg-config file using single-line echo
     RUN mkdir -p /usr/local/lib/pkgconfig && \
-        sh -c 'cat > /usr/local/lib/pkgconfig/libvvenc.pc <<EOF
-    prefix=/usr/local
-    exec_prefix=\${prefix}
-    libdir=\${exec_prefix}/lib
-    includedir=\${prefix}/include
-    
-    Name: vvenc
-    Description: Fraunhofer Versatile Video Encoder
-    Version: 1.6.1
-    Libs: -L\${libdir} -lvvenc -lstdc++
-    Cflags: -I\${includedir}
-    EOF'
+        echo -e "prefix=/usr/local\nexec_prefix=\${prefix}\nlibdir=\${exec_prefix}/lib\nincludedir=\${prefix}/include\n\nName: vvenc\nDescription: Fraunhofer Versatile Video Encoder\nVersion: 1.6.1\nLibs: -L\${libdir} -lvvenc -lstdc++\nCflags: -I\${includedir}" \
+        > /usr/local/lib/pkgconfig/libvvenc.pc
     
     # Set environment variables for FFmpeg build
     ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
