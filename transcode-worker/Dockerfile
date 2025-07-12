@@ -36,9 +36,9 @@
         cp -r /opt/vvenc/install/lib/libvvenc* /usr/local/lib/ && \
         ldconfig
     
-    # Step 3: Create pkg-config file using safe heredoc block
+    # Step 3: Create pkg-config file using properly escaped heredoc
     RUN mkdir -p /usr/local/lib/pkgconfig && \
-        sh -c 'cat > /usr/local/lib/pkgconfig/libvvenc.pc <<EOF
+        sh -c 'cat <<EOF > /usr/local/lib/pkgconfig/libvvenc.pc
     prefix=/usr/local
     exec_prefix=\${prefix}
     libdir=\${exec_prefix}/lib
