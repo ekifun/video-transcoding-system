@@ -13,7 +13,6 @@
     
     ENV DEBIAN_FRONTEND=noninteractive
     
-    # Install build dependencies
     RUN apt-get update && apt-get install -y \
       git cmake build-essential yasm pkg-config \
       wget curl unzip nasm libx264-dev libx265-dev libnuma-dev \
@@ -36,12 +35,19 @@
         cp -r /opt/vvenc/install/lib/libvvenc* /usr/local/lib/ && \
         ldconfig
     
-    # Step 3: Create pkg-config file using single-line echo
+    # Step 3: Create pkg-config file (no heredoc, use echo)
     RUN mkdir -p /usr/local/lib/pkgconfig && \
-        echo -e "prefix=/usr/local\nexec_prefix=\${prefix}\nlibdir=\${exec_prefix}/lib\nincludedir=\${prefix}/include\n\nName: vvenc\nDescription: Fraunhofer Versatile Video Encoder\nVersion: 1.6.1\nLibs: -L\${libdir} -lvvenc -lstdc++\nCflags: -I\${includedir}" \
-        > /usr/local/lib/pkgconfig/libvvenc.pc
+        echo 'prefix=/usr/local' > /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo 'exec_prefix=${prefix}' >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo 'libdir=${exec_prefix}/lib' >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo 'includedir=${prefix}/include' >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo '' >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo 'Name: vvenc' >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo 'Description: Fraunhofer Versatile Video Encoder' >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo 'Version: 1.6.1' >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo 'Libs: -L${libdir} -lvvenc -lstdc++' >> /usr/local/lib/pkgconfig/libvvenc.pc && \
+        echo 'Cflags: -I${includedir}' >> /usr/local/lib/pkgconfig/libvvenc.pc
     
-    # Set environment variables for FFmpeg build
     ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
     ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
     ENV LDFLAGS="-lstdc++"
