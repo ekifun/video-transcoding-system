@@ -139,12 +139,12 @@ v2.0.0: Added HEVC support, unified Redis structure, and DASH output
 
 v3.0.0: Added support for VVC transcoding and DASH output
 
-Authors
+## Authors
 
 Chenghao Liu — Architect & Developer
 
 Contributors welcome
 
-License
+## License
 
 MIT License. See LICENSE for details.
