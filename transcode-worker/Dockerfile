@@ -37,8 +37,9 @@
       cp -r /opt/vvenc/install/lib64/libvvenc* /usr/local/lib64/ 2>/dev/null || true && \
       ldconfig
   
-  # Write libvvenc.pc without EOF
-  RUN echo "prefix=/usr/local\n\
+  # Write libvvenc.pc
+  RUN mkdir -p /usr/local/lib/pkgconfig && \
+      echo "prefix=/usr/local\n\
   exec_prefix=\${prefix}\n\
   libdir=\${exec_prefix}/lib\n\
   includedir=\${prefix}/include\n\
