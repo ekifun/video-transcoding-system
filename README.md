@@ -1,9 +1,11 @@
-video-transcoding-system
+# video-transcoding-system
 
-Live Demo
-Source Code
+Live Demo: https://ekifun.github.io/video-transcoding-system/
+Source Code: https://github.com/ekifun/video-transcoding-system/
+
 This project provides an end-to-end video transcoding pipeline supporting multiple resolutions and codecs (H.264/AVC, HEVC, and VVC). It is built with Kafka, Redis, Go microservices, FFmpeg, and MP4Box for DASH packaging and adaptive streaming.
-1. System Architecture Overview
+
+## 1. System Architecture Overview
      +--------------+        +---------------------+     +------------------+
      |              |        |                     |     |                  |
      |  Mobile App  +------->+ Transcode Server    +---->+ Kafka (Job Topic)|
@@ -129,11 +131,19 @@ Check Codec of Segment
 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 file.mp4
 ```
 5. Versioning
+
 v1.0.0: Initial H.264/AVC support and DASH output
+
 v2.0.0: Added HEVC support, unified Redis structure, and DASH output
+
 v3.0.0: Added support for VVC transcoding and DASH output
+
 Authors
+
 Chenghao Liu — Architect & Developer
+
 Contributors welcome
+
 License
+
 MIT License. See LICENSE for details.
