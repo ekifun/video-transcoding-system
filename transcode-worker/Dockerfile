@@ -76,10 +76,12 @@
   ENV DEBIAN_FRONTEND=noninteractive
   ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
   
-  # Fix: install missing runtime dependency
+  # ✅ Install runtime dependencies required by FFmpeg (libxcb etc.)
   RUN apt-get update && apt-get install -y \
     ca-certificates \
     libxcb1 \
+    libxcb-shm0 \
+    libxcb-xfixes0 \
     && rm -rf /var/lib/apt/lists/*
   
   # Copy FFmpeg and vvenc libs
