@@ -13,7 +13,7 @@
     
     ENV DEBIAN_FRONTEND=noninteractive
     
-    # Step 1: Install build dependencies
+    # Install build dependencies
     RUN apt-get update && apt-get install -y \
       git cmake build-essential yasm pkg-config \
       wget curl unzip nasm libx264-dev libx265-dev libnuma-dev \
@@ -24,19 +24,19 @@
     
     WORKDIR /opt
     
-    # Step 2: Clone and build vvenc (>= v1.6.1)
+    # Step 1: Clone and build vvenc (>= v1.6.1)
     RUN git clone --branch v1.6.1 https://github.com/fraunhoferhhi/vvenc.git && \
         cd vvenc && mkdir build && cd build && \
-        cmake .. -DCMAKE_BUILD_TYPE=Release && \
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/vvenc/install && \
         make -j$(nproc) && make install
     
-    # Step 3: Manually install headers and libs to /usr/local
+    # Step 2: Manually install headers and libs
     RUN mkdir -p /usr/local/include/vvenc && \
-        cp -r /opt/vvenc/source/Lib/vvenc/*.h /usr/local/include/vvenc/ && \
-        cp -r /opt/vvenc/build/libvvenc* /usr/local/lib/ && \
+        cp -r /opt/vvenc/install/include/vvenc/* /usr/local/include/vvenc/ && \
+        cp -r /opt/vvenc/install/lib/libvvenc* /usr/local/lib/ && \
         ldconfig
     
-    # Step 4: Create pkg-config file for libvvenc
+    # Step 3: Create a valid pkg-config file for libvvenc
     RUN mkdir -p /usr/local/lib/pkgconfig && \
         echo "prefix=/usr/local" > /usr/local/lib/pkgconfig/libvvenc.pc && \
         echo "exec_prefix=\${prefix}" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
@@ -49,10 +49,10 @@
         echo "Libs: -L\${libdir} -lvvenc" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
         echo "Cflags: -I\${includedir}" >> /usr/local/lib/pkgconfig/libvvenc.pc
     
-    ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
-    ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64"
+    # Step 4: Clone and build FFmpeg with libvvenc
+    ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+    ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
     
-    # Step 5: Clone and build FFmpeg with libvvenc
     RUN git clone https://github.com/FFmpeg/FFmpeg.git && \
         cd FFmpeg && \
         ./configure \
@@ -73,13 +73,13 @@
       ca-certificates && \
       rm -rf /var/lib/apt/lists/*
     
-    # Copy FFmpeg binaries and vvenc libraries
+    # Copy FFmpeg and vvenc libs
     COPY --from=ffmpeg-builder /usr/local/bin/ffmpeg /usr/local/bin/
     COPY --from=ffmpeg-builder /usr/local/bin/ffprobe /usr/local/bin/
     COPY --from=ffmpeg-builder /usr/local/lib/libvvenc* /usr/local/lib/
-    COPY --from=ffmpeg-builder /usr/local/lib64/libvvenc* /usr/local/lib64/
+    COPY --from=ffmpeg-builder /usr/local/lib64/libvvenc* /usr/local/lib64/ || true
     
-    # Copy Go application
+    # Copy transcode worker binary
     WORKDIR /app
     COPY --from=builder /app/transcode-worker /app/transcode-worker
     
