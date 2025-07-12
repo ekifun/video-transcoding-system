@@ -14,12 +14,12 @@
   ENV DEBIAN_FRONTEND=noninteractive
   
   RUN apt-get update && apt-get install -y \
-    git cmake build-essential yasm pkg-config \
-    wget curl unzip nasm libx264-dev libx265-dev libnuma-dev \
-    zlib1g-dev libass-dev libfreetype6-dev libvorbis-dev \
-    libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev libxcb-shape0-dev \
-    libtool automake ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+      git cmake build-essential yasm pkg-config \
+      wget curl unzip nasm libx264-dev libx265-dev libnuma-dev \
+      zlib1g-dev libass-dev libfreetype6-dev libvorbis-dev \
+      libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev libxcb-shape0-dev \
+      libtool automake ca-certificates && \
+      rm -rf /var/lib/apt/lists/*
   
   WORKDIR /opt
   
@@ -76,22 +76,30 @@
   ENV DEBIAN_FRONTEND=noninteractive
   ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
   
-  # Install runtime shared libraries required by FFmpeg
+  # ✅ Install all runtime shared library dependencies
   RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    libxcb1 \
-    libxcb-shm0 \
-    libxcb-xfixes0 \
-    libxcb-shape0 \
-    && rm -rf /var/lib/apt/lists/*
+      ca-certificates \
+      libxcb1 \
+      libxcb-shm0 \
+      libxcb-xfixes0 \
+      libxcb-shape0 \
+      libx264-160 \
+      libx265-199 \
+      libnuma1 \
+      libass9 \
+      libfreetype6 \
+      libvorbis0a \
+      libvorbisenc2 \
+      zlib1g \
+      && rm -rf /var/lib/apt/lists/*
   
-  # Copy FFmpeg and vvenc libs
+  # ✅ Copy FFmpeg binary and libraries
   COPY --from=ffmpeg-builder-final /usr/local/bin/ffmpeg /usr/local/bin/
   COPY --from=ffmpeg-builder-final /usr/local/bin/ffprobe /usr/local/bin/
   COPY --from=ffmpeg-builder-final /usr/local/lib/ /usr/local/lib/
   COPY --from=ffmpeg-builder-final /usr/local/lib64/ /usr/local/lib64/
   
-  # Copy Go binary
+  # ✅ Copy Go binary
   WORKDIR /app
   COPY --from=builder /app/transcode-worker /app/transcode-worker
   
