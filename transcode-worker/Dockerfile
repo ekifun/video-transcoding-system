@@ -49,12 +49,11 @@
         echo "Libs: -L\${libdir} -lvvenc" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
         echo "Cflags: -I\${includedir}" >> /usr/local/lib/pkgconfig/libvvenc.pc
     
-    # Step 4: Clone and build FFmpeg with libvvenc
-    ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
-    ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
-    
+    # Step 4: Clone and build FFmpeg with libvvenc (exports in same layer)
     RUN git clone https://github.com/FFmpeg/FFmpeg.git && \
         cd FFmpeg && \
+        export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig" && \
+        export LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64" && \
         ./configure \
           --pkg-config-flags="--static" \
           --extra-cflags="-I/usr/local/include" \
