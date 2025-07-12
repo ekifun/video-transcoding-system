@@ -13,7 +13,7 @@
     
     ENV DEBIAN_FRONTEND=noninteractive
     
-    # Install build dependencies
+    # Step 1: Install build dependencies
     RUN apt-get update && apt-get install -y \
       git cmake build-essential yasm pkg-config \
       wget curl unzip nasm libx264-dev libx265-dev libnuma-dev \
@@ -24,13 +24,19 @@
     
     WORKDIR /opt
     
-    # Step 1: Clone and build vvenc (>= v1.6.1)
+    # Step 2: Clone and build vvenc (>= v1.6.1)
     RUN git clone --branch v1.6.1 https://github.com/fraunhoferhhi/vvenc.git && \
         cd vvenc && mkdir build && cd build && \
         cmake .. -DCMAKE_BUILD_TYPE=Release && \
         make -j$(nproc) && make install
     
-    # Step 2: Manually create pkg-config file for libvvenc
+    # Step 3: Manually install headers and libs to /usr/local
+    RUN mkdir -p /usr/local/include/vvenc && \
+        cp -r /opt/vvenc/source/Lib/vvenc/*.h /usr/local/include/vvenc/ && \
+        cp -r /opt/vvenc/build/libvvenc* /usr/local/lib/ && \
+        ldconfig
+    
+    # Step 4: Create pkg-config file for libvvenc
     RUN mkdir -p /usr/local/lib/pkgconfig && \
         echo "prefix=/usr/local" > /usr/local/lib/pkgconfig/libvvenc.pc && \
         echo "exec_prefix=\${prefix}" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
@@ -46,13 +52,7 @@
     ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
     ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64"
     
-    # Step 3: Debug info
-    RUN echo "[DEBUG] libvvenc.pc contents:" && cat /usr/local/lib/pkgconfig/libvvenc.pc && \
-        echo "[DEBUG] pkg-config --modversion libvvenc:" && pkg-config --modversion libvvenc && \
-        echo "[DEBUG] pkg-config --cflags libvvenc:" && pkg-config --cflags libvvenc && \
-        echo "[DEBUG] pkg-config --libs libvvenc:" && pkg-config --libs libvvenc
-    
-    # Step 4: Clone and build FFmpeg with libvvenc
+    # Step 5: Clone and build FFmpeg with libvvenc
     RUN git clone https://github.com/FFmpeg/FFmpeg.git && \
         cd FFmpeg && \
         ./configure \
@@ -73,11 +73,13 @@
       ca-certificates && \
       rm -rf /var/lib/apt/lists/*
     
+    # Copy FFmpeg binaries and vvenc libraries
     COPY --from=ffmpeg-builder /usr/local/bin/ffmpeg /usr/local/bin/
     COPY --from=ffmpeg-builder /usr/local/bin/ffprobe /usr/local/bin/
     COPY --from=ffmpeg-builder /usr/local/lib/libvvenc* /usr/local/lib/
     COPY --from=ffmpeg-builder /usr/local/lib64/libvvenc* /usr/local/lib64/
     
+    # Copy Go application
     WORKDIR /app
     COPY --from=builder /app/transcode-worker /app/transcode-worker
     
