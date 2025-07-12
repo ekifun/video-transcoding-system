@@ -36,7 +36,7 @@
         cp -r /opt/vvenc/install/lib/libvvenc* /usr/local/lib/ && \
         ldconfig
     
-    # Step 3: Create pkg-config file using heredoc (MUST be non-indented)
+    # Step 3: Create pkg-config file using non-indented heredoc
     RUN mkdir -p /usr/local/lib/pkgconfig && \
     cat <<EOF > /usr/local/lib/pkgconfig/libvvenc.pc
     prefix=/usr/local
