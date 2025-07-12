@@ -38,17 +38,17 @@
     
     # Step 3: Create pkg-config file using heredoc
     RUN mkdir -p /usr/local/lib/pkgconfig && \
-        cat > /usr/local/lib/pkgconfig/libvvenc.pc << 'EOF'
+        cat <<EOF > /usr/local/lib/pkgconfig/libvvenc.pc
     prefix=/usr/local
-    exec_prefix=${prefix}
-    libdir=${exec_prefix}/lib
-    includedir=${prefix}/include
+    exec_prefix=\${prefix}
+    libdir=\${exec_prefix}/lib
+    includedir=\${prefix}/include
     
     Name: vvenc
     Description: Fraunhofer Versatile Video Encoder
     Version: 1.6.1
-    Libs: -L${libdir} -lvvenc -lstdc++
-    Cflags: -I${includedir}
+    Libs: -L\${libdir} -lvvenc -lstdc++
+    Cflags: -I\${includedir}
     EOF
     
     ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
