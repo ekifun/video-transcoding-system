@@ -17,8 +17,8 @@
     git cmake build-essential yasm pkg-config \
     wget curl unzip nasm libx264-dev libx265-dev libnuma-dev \
     zlib1g-dev libass-dev libfreetype6-dev libvorbis-dev \
-    libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev libtool automake \
-    ca-certificates && \
+    libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev libxcb-shape0-dev \
+    libtool automake ca-certificates && \
     rm -rf /var/lib/apt/lists/*
   
   WORKDIR /opt
@@ -76,12 +76,13 @@
   ENV DEBIAN_FRONTEND=noninteractive
   ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
   
-  # ✅ Install runtime dependencies required by FFmpeg (libxcb etc.)
+  # Install runtime shared libraries required by FFmpeg
   RUN apt-get update && apt-get install -y \
     ca-certificates \
     libxcb1 \
     libxcb-shm0 \
     libxcb-xfixes0 \
+    libxcb-shape0 \
     && rm -rf /var/lib/apt/lists/*
   
   # Copy FFmpeg and vvenc libs
