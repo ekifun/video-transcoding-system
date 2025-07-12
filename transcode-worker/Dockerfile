@@ -36,7 +36,7 @@
         cp -r /opt/vvenc/install/lib/libvvenc* /usr/local/lib/ && \
         ldconfig
     
-    # Step 3: Create pkg-config file using heredoc
+    # Step 3: Create pkg-config file using heredoc (MUST NOT indent EOF)
     RUN mkdir -p /usr/local/lib/pkgconfig && \
         cat <<EOF > /usr/local/lib/pkgconfig/libvvenc.pc
     prefix=/usr/local
@@ -51,6 +51,7 @@
     Cflags: -I\${includedir}
     EOF
     
+    # Set environment variables for FFmpeg build
     ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
     ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
     ENV LDFLAGS="-lstdc++"
