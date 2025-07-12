@@ -1,6 +1,7 @@
 # video-transcoding-system
 
 Live Demo: https://ekifun.github.io/video-transcoding-system/
+
 Source Code: https://github.com/ekifun/video-transcoding-system/
 
 This project provides an end-to-end video transcoding pipeline supporting multiple resolutions and codecs (H.264/AVC, HEVC, and VVC). It is built with Kafka, Redis, Go microservices, FFmpeg, and MP4Box for DASH packaging and adaptive streaming.
