@@ -27,13 +27,14 @@
     # Step 1: Clone and build vvenc (>= v1.6.1)
     RUN git clone --branch v1.6.1 https://github.com/fraunhoferhhi/vvenc.git && \
         cd vvenc && mkdir build && cd build && \
-        cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/vvenc/install && \
-        make -j$(nproc) && make install
+        cmake .. -DCMAKE_BUILD_TYPE=Release && \
+        make -j$(nproc) && \
+        make install DESTDIR=/opt/vvenc/install
     
-    # Step 2: Manually install headers and libraries to /usr/local
+    # Step 2: Manually install headers and libs
     RUN mkdir -p /usr/local/include/vvenc && \
-        cp -r /opt/vvenc/install/include/vvenc/* /usr/local/include/vvenc/ && \
-        cp -r /opt/vvenc/install/lib/libvvenc* /usr/local/lib/ && \
+        cp -r /opt/vvenc/install/usr/local/include/vvenc/* /usr/local/include/vvenc/ && \
+        cp -r /opt/vvenc/install/usr/local/lib/libvvenc* /usr/local/lib/ && \
         ldconfig
     
     # Step 3: Create a pkg-config file for libvvenc
@@ -49,15 +50,9 @@
         echo "Libs: -L\${libdir} -lvvenc" >> /usr/local/lib/pkgconfig/libvvenc.pc && \
         echo "Cflags: -I\${includedir}" >> /usr/local/lib/pkgconfig/libvvenc.pc
     
+    # Step 4: Set environment for FFmpeg to find libvvenc
     ENV PKG_CONFIG_PATH="/usr/local/lib/pkgconfig"
     ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64"
-    
-    # Step 4: Debug pkg-config (optional but useful)
-    RUN echo "[DEBUG] Checking libvvenc.pc:" && \
-        cat /usr/local/lib/pkgconfig/libvvenc.pc && \
-        echo "[DEBUG] pkg-config --modversion libvvenc:" && pkg-config --modversion libvvenc && \
-        echo "[DEBUG] pkg-config --cflags libvvenc:" && pkg-config --cflags libvvenc && \
-        echo "[DEBUG] pkg-config --libs libvvenc:" && pkg-config --libs libvvenc
     
     # Step 5: Build FFmpeg with libvvenc support
     RUN git clone https://github.com/FFmpeg/FFmpeg.git && \
@@ -80,11 +75,12 @@
       ca-certificates && \
       rm -rf /var/lib/apt/lists/*
     
+    # Copy built FFmpeg binaries and vvenc libs
     COPY --from=ffmpeg-builder /usr/local/bin/ffmpeg /usr/local/bin/
     COPY --from=ffmpeg-builder /usr/local/bin/ffprobe /usr/local/bin/
     COPY --from=ffmpeg-builder /usr/local/lib/libvvenc* /usr/local/lib/
-    COPY --from=ffmpeg-builder /usr/local/lib64/libvvenc* /usr/local/lib64/
     
+    # Copy Go binary
     WORKDIR /app
     COPY --from=builder /app/transcode-worker /app/transcode-worker
     
