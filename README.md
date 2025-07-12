@@ -106,7 +106,7 @@ curl -X POST http://localhost:8080/transcode \
   -d '{
     "input_url": "https://example.com/video.mp4",
     "resolutions": ["144p", "360p", "720p"],
-    "codec": "vvc"
+    "codec": "hevc"
   }'
 ```
 Monitor Logs
