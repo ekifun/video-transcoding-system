@@ -121,12 +121,12 @@ docker exec -it redis redis-cli
 > keys job:*
 > hgetall job:<jobID>
 ```
-Verify Output
-Open in browser:
-```bash
-http://<your-ec2-ip>:8081/<jobID>/manifest.mpd
-```
-Playback using DASH.js.
+### Verify Output
+
+#### [DASH.js Reference Player](https://reference.dashif.org/dash.js/latest/samples/dash-if-reference-player/index.html)
+
+You can use the official [DASH.js Reference Player](https://reference.dashif.org/dash.js/latest/samples/dash-if-reference-player/index.html) to test DASH playback of your transcoded streams. Simply paste the URL to your `manifest.mpd` (e.g., `http://<your-ec2-ip>:8081/segments/<jobID>/manifest.mpd`) into the player’s input field and click **Load**.
+
 Check Codec of Segment
 ```bash
 ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 file.mp4
