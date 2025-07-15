@@ -18,10 +18,6 @@ var (
 	kafkaWriter *kafka.Writer
 )
 
-var (
-	requiredReps = []string{"144p", "360p", "720p"}
-)
-
 func init() {
 	// Redis
 	redisClient = redis.NewClient(&redis.Options{
@@ -33,7 +29,7 @@ func init() {
 
 	// Kafka
 	kafkaWriter = &kafka.Writer{
-		Addr: 	  kafka.TCP(os.Getenv("KAFKA_BROKERS")),
+		Addr:     kafka.TCP(os.Getenv("KAFKA_BROKERS")),
 		Topic:    "mpd-generation",
 		Balancer: &kafka.LeastBytes{},
 	}
@@ -67,7 +63,6 @@ func checkCompletedJobs() {
 			log.Printf("✅ All done for job: %s", jobID)
 			publishReadyForMPD(jobID)
 
-			// Mark status instead of deleting
 			err := redisClient.HSet(ctx, key, "status", "ready_for_mpd").Err()
 			if err != nil {
 				log.Printf("⚠️ Failed to update job status in Redis: %v", err)
@@ -77,12 +72,35 @@ func checkCompletedJobs() {
 }
 
 func allRepsDone(progress map[string]string) bool {
+	requiredListStr, ok := progress["required_resolutions"]
+	if !ok || requiredListStr == "" {
+		log.Printf("⚠️ Missing or empty required_resolutions field in Redis job metadata")
+		return false
+	}
+
+	requiredReps := parseRequiredReps(requiredListStr)
+
 	for _, rep := range requiredReps {
-		if progress[rep] != "done" {
+		status := progress[rep]
+		if status != "done" {
+			log.Printf("⏳ Representation %s is not done yet (status=%s)", rep, status)
 			return false
 		}
 	}
+
 	return true
+}
+
+func parseRequiredReps(input string) []string {
+	parts := strings.Split(input, ",")
+	var reps []string
+	for _, p := range parts {
+		rep := strings.TrimSpace(p)
+		if rep != "" {
+			reps = append(reps, rep)
+		}
+	}
+	return reps
 }
 
 func publishReadyForMPD(jobID string) {
