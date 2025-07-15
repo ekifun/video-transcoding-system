@@ -17,7 +17,7 @@ import (
 var (
 	ctx         = context.Background()
 	segmentsDir = "/segments"
-	publicHost  = os.Getenv("PUBLIC_HOST") // e.g., http://13.57.143.121
+	publicHost  = os.Getenv("PUBLIC_HOST")
 )
 
 var redisClient = redis.NewClient(&redis.Options{
@@ -74,7 +74,6 @@ func generateMPD(jobID string) {
 
 	redisKey := fmt.Sprintf("job:%s", jobID)
 
-	// Read codec
 	codec, err := redisClient.HGet(ctx, redisKey, "codec").Result()
 	if err != nil {
 		log.Printf("❌ Failed to read codec from Redis for job %s: %v", jobID, err)
@@ -82,13 +81,13 @@ func generateMPD(jobID string) {
 	}
 	codec = strings.ToLower(codec)
 
-	// Read required_resolutions
 	requiredListStr, err := redisClient.HGet(ctx, redisKey, "required_resolutions").Result()
 	if err != nil {
 		log.Printf("❌ Failed to read required_resolutions from Redis for job %s: %v", jobID, err)
 		return
 	}
 	requiredReps := parseRequiredReps(requiredListStr)
+	log.Printf("📋 Job %s required representations: %s", jobID, strings.Join(requiredReps, ","))
 
 	args := []string{
 		"-dash", "4000",
@@ -96,20 +95,18 @@ func generateMPD(jobID string) {
 		"-out", localMPDPath,
 	}
 
-	// Add DASH profile based on codec
 	switch codec {
 	case "h264", "avc":
 		args = append([]string{"-profile", "dashavc264:live"}, args...)
 	case "hevc", "h265":
-		log.Printf("ℹ️ HEVC codec detected for job %s — no DASH profile used", jobID)
+		log.Printf("ℹ️ HEVC codec detected for job %s", jobID)
 	case "vvc", "h266":
-		log.Printf("ℹ️ VVC codec detected for job %s — no DASH profile used", jobID)
+		log.Printf("ℹ️ VVC codec detected for job %s", jobID)
 	default:
-		log.Printf("⚠️ Unknown codec '%s' for job %s — defaulting to AVC profile", codec, jobID)
+		log.Printf("⚠️ Unknown codec '%s' for job %s", codec, jobID)
 		args = append([]string{"-profile", "dashavc264:live"}, args...)
 	}
 
-	// Add segment files dynamically
 	for _, rep := range requiredReps {
 		file := filepath.Join(segmentsDir, fmt.Sprintf("%s_%s.mp4", jobID, rep))
 		if _, err := os.Stat(file); os.IsNotExist(err) {
@@ -130,9 +127,10 @@ func generateMPD(jobID string) {
 
 	log.Printf("✅ MPD generated: %s", localMPDPath)
 
-	// Read additional metadata for DB
 	streamName, _ := redisClient.HGet(ctx, redisKey, "stream_name").Result()
 	inputURL, _ := redisClient.HGet(ctx, redisKey, "input_url").Result()
+
+	log.Printf("💾 Saving to DB representations: %s", strings.Join(requiredReps, ","))
 
 	if err := SaveJobToDB(jobID, streamName, inputURL, codec, strings.Join(requiredReps, ","), publicMPDURL); err != nil {
 		log.Printf("⚠️ Failed to persist job to DB: %v", err)
