@@ -16,9 +16,9 @@ import (
 
 var (
 	ctx         = context.Background()
-	redisAddr   = os.Getenv("REDIS_ADDR") // e.g. "redis:6379"
+	redisAddr   = os.Getenv("REDIS_ADDR")
 	redisClient *redis.Client
-	outputDir   = "/segments" // Shared volume path
+	outputDir   = "/segments"
 )
 
 func init() {
@@ -31,7 +31,6 @@ func init() {
 	log.Println("✅ Connected to Redis")
 }
 
-// DownloadInput downloads the input file to /segments/{jobID}_input.mp4 and returns its local path.
 func DownloadInput(inputURL string, jobID string) (string, error) {
 	log.Printf("🌐 Downloading input from: %s", inputURL)
 	localPath := filepath.Join(outputDir, fmt.Sprintf("%s_input.mp4", jobID))
@@ -61,7 +60,6 @@ func DownloadInput(inputURL string, jobID string) (string, error) {
 	return localPath, nil
 }
 
-// MapCodecToFFmpeg maps codec names to FFmpeg encoder names
 func MapCodecToFFmpeg(codec string) string {
 	switch codec {
 	case "hevc", "h265":
@@ -78,11 +76,11 @@ func MapCodecToFFmpeg(codec string) string {
 
 func HandleTranscodeJob(job TranscodeJob) {
 	if job.Codec == "" {
-		job.Codec = "h264" // Default to H.264
+		job.Codec = "h264"
 	}
 
-	log.Printf("📥 [Job %s] Received Job | Codec=%s | Resolution=%s | Bitrate=%s | InputURL=%s | Representation=%s",
-		job.JobID, job.Codec, job.Resolution, job.Bitrate, job.InputURL, job.Representation)
+	log.Printf("📥 [Job %s] Received Job | Codec=%s | Resolution=%s | Bitrate=%s | GOP=%d | KeyintMin=%d",
+		job.JobID, job.Codec, job.Resolution, job.Bitrate, job.GopSize, job.KeyintMin)
 
 	if job.Resolution == "" || job.Bitrate == "" {
 		log.Printf("⚠️ [Job %s] Missing resolution or bitrate. Skipping job.", job.JobID)
@@ -112,9 +110,6 @@ func HandleTranscodeJob(job TranscodeJob) {
 	}
 	defer os.Remove(localInput)
 
-	log.Printf("📥 [Job %s] Input downloaded to: %s", job.JobID, localInput)
-
-	// Use .mp4 for all outputs (including VVC encapsulated in MP4)
 	outputPath := filepath.Join(outputDir, fmt.Sprintf("%s_%s.mp4", job.JobID, job.Representation))
 
 	args := []string{
@@ -122,16 +117,15 @@ func HandleTranscodeJob(job TranscodeJob) {
 		"-vf", fmt.Sprintf("scale=%s", job.Resolution),
 		"-c:v", ffmpegCodec,
 		"-b:v", job.Bitrate,
-		"-g", "48",
-		"-keyint_min", "48",
+		"-g", fmt.Sprintf("%d", job.GopSize),
+		"-keyint_min", fmt.Sprintf("%d", job.KeyintMin),
 		"-sc_threshold", "0",
 		"-an",
 	}
 
-	// VVC-specific tuning (optional)
 	if job.Codec == "vvc" || job.Codec == "h266" {
 		args = append(args,
-			"-preset", "medium",  // other options: fast, slow
+			"-preset", "medium",
 			"-threads", "4",
 			"-f", "mp4",
 		)

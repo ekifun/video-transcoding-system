@@ -30,6 +30,8 @@ export default function App() {
 
   const [resolutions, setResolutions] = useState(RESOLUTION_OPTIONS);
   const [codec, setCodec] = useState("h264");
+  const [gopSize, setGopSize] = useState("48");
+  const [keyintMin, setKeyintMin] = useState("48");
   const [submitting, setSubmitting] = useState(false);
   const [jobs, setJobs] = useState([]);
 
@@ -68,6 +70,8 @@ export default function App() {
       resolutions: selected,
       codec,
       stream_name: "big-bunny-1080p",
+      gop_size: parseInt(gopSize),
+      keyint_min: parseInt(keyintMin),
     };
 
     try {
@@ -138,6 +142,22 @@ export default function App() {
           </TouchableOpacity>
         ))}
       </View>
+
+      <Text style={styles.label}>GOP Size (-g):</Text>
+      <TextInput
+        style={styles.input}
+        value={gopSize}
+        onChangeText={setGopSize}
+        keyboardType="numeric"
+      />
+
+      <Text style={styles.label}>Key Frame Interval (keyint_min):</Text>
+      <TextInput
+        style={styles.input}
+        value={keyintMin}
+        onChangeText={setKeyintMin}
+        keyboardType="numeric"
+      />
 
       <View style={styles.submitBtn}>
         <Button title={submitting ? "Submitting..." : "Submit"} onPress={handleSubmit} disabled={submitting} />
