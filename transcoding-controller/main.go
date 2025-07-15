@@ -23,7 +23,8 @@ var resolutionMap = map[string]struct {
 var validCodecs = map[string]bool{
 	"h264": true,
 	"hevc": true,
-	"vvc":  true, // ✅ Add this line
+	"vvc":  true,
+	"vp9":  true, // ✅ VP9 codec support
 }
 
 func main() {
@@ -31,7 +32,7 @@ func main() {
 
 	InitKafka()
 	InitRedis()
-	InitDB() // ✅ Initialize SQLite DB connection
+	InitDB()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -39,7 +40,7 @@ func main() {
 	})
 
 	http.HandleFunc("/transcode", handleTranscodeRequest)
-	http.HandleFunc("/jobs", handleListJobs) // ✅ Add /jobs endpoint
+	http.HandleFunc("/jobs", handleListJobs)
 
 	log.Println("🚀 Controller running on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -60,7 +61,6 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("📥 Received transcode request: %+v", req)
 
-	// ✅ Validate fields
 	if req.StreamName == "" || req.InputURL == "" || len(req.Resolutions) == 0 || req.Codec == "" {
 		http.Error(w, "Missing required fields", http.StatusBadRequest)
 		return
@@ -86,6 +86,7 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		// Always output as .mp4 (including vp9 in mp4 container)
 		job := TranscodeJob{
 			JobID:          jobID,
 			InputURL:       req.InputURL,
