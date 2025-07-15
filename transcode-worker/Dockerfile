@@ -35,13 +35,18 @@
     cmake -G "Unix Makefiles" -DENABLE_SHARED=ON ../../source && \
     make -j$(nproc) && make install
   
-  # Clone and build libvvenc
+  # Build libvpx (shared)
+  RUN git clone https://chromium.googlesource.com/webm/libvpx && \
+    cd libvpx && \
+    ./configure --prefix=/usr/local --enable-shared --disable-static --disable-examples --disable-unit-tests && \
+    make -j$(nproc) && make install
+  
+  # Build libvvenc (shared)
   RUN git clone --branch v1.6.1 https://github.com/fraunhoferhhi/vvenc.git && \
       cd vvenc && mkdir build && cd build && \
       cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/vvenc/install && \
       make -j$(nproc) && make install
   
-  # Install vvenc headers and libs
   RUN mkdir -p /usr/local/include/vvenc && \
       cp -r /opt/vvenc/install/include/vvenc/* /usr/local/include/vvenc/ && \
       cp -r /opt/vvenc/install/lib/libvvenc* /usr/local/lib/ && \
@@ -49,7 +54,6 @@
       cp -r /opt/vvenc/install/lib64/libvvenc* /usr/local/lib64/ 2>/dev/null || true && \
       ldconfig
   
-  # Write libvvenc.pc
   RUN mkdir -p /usr/local/lib/pkgconfig && \
       echo "prefix=/usr/local\n\
   exec_prefix=\${prefix}\n\
@@ -80,6 +84,7 @@
         --extra-ldflags="$(pkg-config --libs libvvenc)" \
         --enable-gpl --enable-nonfree \
         --enable-libx264 --enable-libx265 --enable-libvvenc \
+        --enable-libvpx \
         --enable-shared && \
       make -j$(nproc) && make install
   
@@ -89,7 +94,6 @@
   ENV DEBIAN_FRONTEND=noninteractive
   ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
   
-  # Install runtime dependencies (shared libraries)
   RUN apt-get update && apt-get install -y \
     ca-certificates \
     libxcb1 \
@@ -104,18 +108,16 @@
     zlib1g \
     && rm -rf /var/lib/apt/lists/*
   
-  # Copy FFmpeg binaries and shared libs
   COPY --from=ffmpeg-builder-final /usr/local/bin/ffmpeg /usr/local/bin/
   COPY --from=ffmpeg-builder-final /usr/local/bin/ffprobe /usr/local/bin/
   COPY --from=ffmpeg-builder-final /usr/local/lib/ /usr/local/lib/
   COPY --from=ffmpeg-builder-final /usr/local/lib64/ /usr/local/lib64/
   COPY --from=ffmpeg-builder-final /usr/local/lib/libx264.so* /usr/local/lib/
   COPY --from=ffmpeg-builder-final /usr/local/lib/libx265.so* /usr/local/lib/
+  COPY --from=ffmpeg-builder-final /usr/local/lib/libvpx.so* /usr/local/lib/
   
-  # Run ldconfig to link shared libs
   RUN ldconfig
   
-  # Copy Go binary
   WORKDIR /app
   COPY --from=builder /app/transcode-worker /app/transcode-worker
   
