@@ -87,7 +87,7 @@ func generateMPD(jobID string) {
 		return
 	}
 	requiredReps := parseRequiredReps(requiredListStr)
-	log.Printf("📋 Job %s required representations: %s", jobID, strings.Join(requiredReps, ","))
+	log.Printf("📋 Job %s required_resolutions: %s", jobID, strings.Join(requiredReps, ","))
 
 	args := []string{
 		"-dash", "4000",
@@ -109,6 +109,8 @@ func generateMPD(jobID string) {
 
 	for _, rep := range requiredReps {
 		file := filepath.Join(segmentsDir, fmt.Sprintf("%s_%s.mp4", jobID, rep))
+		log.Printf("🔎 Checking for segment file: %s", file)
+
 		if _, err := os.Stat(file); os.IsNotExist(err) {
 			log.Printf("⚠️ Missing representation file: %s", file)
 			return

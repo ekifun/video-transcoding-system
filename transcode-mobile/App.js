@@ -15,19 +15,20 @@ import Checkbox from 'expo-checkbox';
 import * as Clipboard from 'expo-clipboard';
 
 export default function App() {
+  const RESOLUTION_OPTIONS = {
+    "144p": false,
+    "240p": false,
+    "360p": false,
+    "480p": false,
+    "720p": false,
+    "1080p": false,
+  };
+
   const [inputURL, setInputURL] = useState(
     "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/1080/Big_Buck_Bunny_1080_10s_1MB.mp4"
   );
 
-  const [resolutions, setResolutions] = useState({
-    "144p": true,
-    "240p": false,
-    "360p": true,
-    "480p": false,
-    "720p": true,
-    "1080p": false,
-  });
-
+  const [resolutions, setResolutions] = useState(RESOLUTION_OPTIONS);
   const [codec, setCodec] = useState("h264");
   const [submitting, setSubmitting] = useState(false);
   const [jobs, setJobs] = useState([]);
@@ -55,6 +56,12 @@ export default function App() {
   const handleSubmit = async () => {
     setSubmitting(true);
     const selected = Object.keys(resolutions).filter((res) => resolutions[res]);
+
+    if (selected.length === 0) {
+      Alert.alert("⚠️ Please select at least one resolution.");
+      setSubmitting(false);
+      return;
+    }
 
     const payload = {
       input_url: inputURL,
@@ -106,7 +113,7 @@ export default function App() {
       />
 
       <Text style={styles.label}>Resolutions:</Text>
-      {Object.keys(resolutions).map((res) => (
+      {Object.keys(RESOLUTION_OPTIONS).map((res) => (
         <View key={res} style={styles.checkboxRow}>
           <Checkbox
             value={resolutions[res]}

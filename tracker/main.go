@@ -59,8 +59,8 @@ func checkCompletedJobs() {
 			continue
 		}
 
-		if allRepsDone(jobData) {
-			log.Printf("✅ All done for job: %s", jobID)
+		if allRepsDone(jobID, jobData) {
+			log.Printf("✅ All required resolutions done for job: %s", jobID)
 			publishReadyForMPD(jobID)
 
 			err := redisClient.HSet(ctx, key, "status", "ready_for_mpd").Err()
@@ -71,19 +71,20 @@ func checkCompletedJobs() {
 	}
 }
 
-func allRepsDone(progress map[string]string) bool {
+func allRepsDone(jobID string, progress map[string]string) bool {
 	requiredListStr, ok := progress["required_resolutions"]
 	if !ok || requiredListStr == "" {
-		log.Printf("⚠️ Missing or empty required_resolutions field in Redis job metadata")
+		log.Printf("⚠️ Job %s missing or empty required_resolutions", jobID)
 		return false
 	}
 
 	requiredReps := parseRequiredReps(requiredListStr)
+	log.Printf("📋 Job %s required_resolutions: %s", jobID, strings.Join(requiredReps, ","))
 
 	for _, rep := range requiredReps {
 		status := progress[rep]
 		if status != "done" {
-			log.Printf("⏳ Representation %s is not done yet (status=%s)", rep, status)
+			log.Printf("⏳ Job %s: %s not done yet (status=%s)", jobID, rep, status)
 			return false
 		}
 	}

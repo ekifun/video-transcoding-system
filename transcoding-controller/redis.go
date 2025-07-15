@@ -38,13 +38,18 @@ func StoreJobMetadata(jobID string, req TranscodeRequest) error {
 	key := fmt.Sprintf("job:%s", jobID)
 	log.Printf("🔄 Storing job metadata with key: %s", key)
 
-	requiredReps := strings.Join(req.Resolutions, ",")
+	// Normalize all resolutions to lowercase
+	for i, res := range req.Resolutions {
+		req.Resolutions[i] = strings.ToLower(res)
+	}
+
+	requiredRes := strings.Join(req.Resolutions, ",")
 
 	data := map[string]interface{}{
 		"stream_name":          req.StreamName,
 		"input_url":            req.InputURL,
 		"codec":                req.Codec,
-		"required_resolutions": requiredReps, // ✅ Save resolutions
+		"required_resolutions": requiredRes,
 	}
 
 	if err := redisClient.HSet(ctx, key, data).Err(); err != nil {
@@ -52,6 +57,6 @@ func StoreJobMetadata(jobID string, req TranscodeRequest) error {
 		return err
 	}
 
-	log.Printf("✅ Job metadata stored in Redis hash for jobID %s with required_resolutions: %s", jobID, requiredReps)
+	log.Printf("✅ Job metadata stored in Redis hash for jobID %s with required_resolutions: %s", jobID, requiredRes)
 	return nil
 }
