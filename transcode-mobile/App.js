@@ -141,7 +141,7 @@ export default function App() {
         <View key={job.job_id} style={styles.jobCard}>
           <Text style={styles.jobText}>📦 {job.job_id}</Text>
           <Text>📺 {job.stream_name}</Text>
-          <Text>📹 {job.codec.toUpperCase()} → {job.required_resolutions || "N/A"}</Text>
+          <Text>📹 {job.codec.toUpperCase()} → {job.representations || "N/A"}</Text>
           <TouchableOpacity onPress={() => copyToClipboard(job.mpd_url)}>
             <Text style={styles.mpdUrl}>🔗 {job.mpd_url}</Text>
           </TouchableOpacity>
