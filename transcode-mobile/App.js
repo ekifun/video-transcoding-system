@@ -32,6 +32,7 @@ export default function App() {
   const [codec, setCodec] = useState("h264");
   const [gopSize, setGopSize] = useState("48");
   const [keyintMin, setKeyintMin] = useState("48");
+  const [showCodecSettings, setShowCodecSettings] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [jobs, setJobs] = useState([]);
 
@@ -70,8 +71,10 @@ export default function App() {
       resolutions: selected,
       codec,
       stream_name: "big-bunny-1080p",
-      gop_size: parseInt(gopSize),
-      keyint_min: parseInt(keyintMin),
+      codec_settings: {
+        gop_size: parseInt(gopSize),
+        keyint_min: parseInt(keyintMin)
+      }
     };
 
     try {
@@ -143,21 +146,34 @@ export default function App() {
         ))}
       </View>
 
-      <Text style={styles.label}>GOP Size (-g):</Text>
-      <TextInput
-        style={styles.input}
-        value={gopSize}
-        onChangeText={setGopSize}
-        keyboardType="numeric"
-      />
+      <TouchableOpacity
+        style={styles.toggleButton}
+        onPress={() => setShowCodecSettings(!showCodecSettings)}
+      >
+        <Text style={styles.toggleButtonText}>
+          {showCodecSettings ? "Hide Codec Settings" : "Show Codec Settings"}
+        </Text>
+      </TouchableOpacity>
 
-      <Text style={styles.label}>Key Frame Interval (keyint_min):</Text>
-      <TextInput
-        style={styles.input}
-        value={keyintMin}
-        onChangeText={setKeyintMin}
-        keyboardType="numeric"
-      />
+      {showCodecSettings && (
+        <View style={styles.codecSettingsContainer}>
+          <Text style={styles.settingLabel}>GOP Size (-g):</Text>
+          <TextInput
+            style={styles.input}
+            value={gopSize}
+            onChangeText={setGopSize}
+            keyboardType="numeric"
+          />
+
+          <Text style={styles.settingLabel}>Key Frame Interval (keyint_min):</Text>
+          <TextInput
+            style={styles.input}
+            value={keyintMin}
+            onChangeText={setKeyintMin}
+            keyboardType="numeric"
+          />
+        </View>
+      )}
 
       <View style={styles.submitBtn}>
         <Button title={submitting ? "Submitting..." : "Submit"} onPress={handleSubmit} disabled={submitting} />
@@ -193,6 +209,19 @@ const styles = StyleSheet.create({
     borderColor: "#555", alignItems: "center", justifyContent: "center", marginRight: 10
   },
   radioDot: { height: 10, width: 10, borderRadius: 5, backgroundColor: "#555" },
+  toggleButton: {
+    backgroundColor: "#555",
+    padding: 10,
+    marginVertical: 10,
+    borderRadius: 5,
+  },
+  toggleButtonText: {
+    color: "#fff",
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+  codecSettingsContainer: { marginVertical: 15 },
+  settingLabel: { fontWeight: "bold", marginTop: 10 },
   jobCard: {
     marginTop: 15,
     padding: 10,
@@ -201,10 +230,7 @@ const styles = StyleSheet.create({
     borderColor: "#ccd",
     borderWidth: 1,
   },
-  jobText: {
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
+  jobText: { fontWeight: "bold", marginBottom: 4 },
   mpdUrl: {
     color: 'blue',
     marginTop: 5,
