@@ -35,10 +35,11 @@
     cmake -G "Unix Makefiles" -DENABLE_SHARED=ON ../../source && \
     make -j$(nproc) && make install
   
-  # Build libvpx (shared)
+  # Build libvpx (with multithread and row-mt support)
   RUN git clone https://chromium.googlesource.com/webm/libvpx && \
     cd libvpx && \
-    ./configure --prefix=/usr/local --enable-shared --disable-static --disable-examples --disable-unit-tests && \
+    ./configure --prefix=/usr/local --enable-shared --disable-static \
+      --enable-multithread --enable-row-mt --disable-examples --disable-unit-tests && \
     make -j$(nproc) && make install
   
   # Build libvvenc (shared)
