@@ -18,11 +18,16 @@ export default function App() {
   const [inputURL, setInputURL] = useState(
     "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/1080/Big_Buck_Bunny_1080_10s_1MB.mp4"
   );
+
   const [resolutions, setResolutions] = useState({
     "144p": true,
+    "240p": false,
     "360p": true,
+    "480p": false,
     "720p": true,
+    "1080p": false,
   });
+
   const [codec, setCodec] = useState("h264");
   const [submitting, setSubmitting] = useState(false);
   const [jobs, setJobs] = useState([]);
@@ -113,7 +118,7 @@ export default function App() {
 
       <Text style={styles.label}>Codec:</Text>
       <View style={styles.codecOptions}>
-        {["h264", "hevc"].map((opt) => (
+        {["h264", "hevc", "vvc"].map((opt) => (
           <TouchableOpacity
             key={opt}
             onPress={() => setCodec(opt)}
@@ -136,7 +141,7 @@ export default function App() {
         <View key={job.job_id} style={styles.jobCard}>
           <Text style={styles.jobText}>📦 {job.job_id}</Text>
           <Text>📺 {job.stream_name}</Text>
-          <Text>📹 {job.codec} → {job.representations}</Text>
+          <Text>📹 {job.codec.toUpperCase()} → {job.required_resolutions || "N/A"}</Text>
           <TouchableOpacity onPress={() => copyToClipboard(job.mpd_url)}>
             <Text style={styles.mpdUrl}>🔗 {job.mpd_url}</Text>
           </TouchableOpacity>
