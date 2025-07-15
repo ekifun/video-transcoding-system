@@ -15,10 +15,9 @@ import (
 )
 
 var (
-	ctx          = context.Background()
-	requiredReps = []string{"144p", "360p", "720p"}
-	segmentsDir  = "/segments"
-	publicHost   = os.Getenv("PUBLIC_HOST") // e.g., http://13.57.143.121
+	ctx         = context.Background()
+	segmentsDir = "/segments"
+	publicHost  = os.Getenv("PUBLIC_HOST") // e.g., http://13.57.143.121
 )
 
 var redisClient = redis.NewClient(&redis.Options{
@@ -74,6 +73,8 @@ func generateMPD(jobID string) {
 	os.MkdirAll(jobDir, 0755)
 
 	redisKey := fmt.Sprintf("job:%s", jobID)
+
+	// Read codec
 	codec, err := redisClient.HGet(ctx, redisKey, "codec").Result()
 	if err != nil {
 		log.Printf("❌ Failed to read codec from Redis for job %s: %v", jobID, err)
@@ -81,13 +82,21 @@ func generateMPD(jobID string) {
 	}
 	codec = strings.ToLower(codec)
 
+	// Read required_resolutions
+	requiredListStr, err := redisClient.HGet(ctx, redisKey, "required_resolutions").Result()
+	if err != nil {
+		log.Printf("❌ Failed to read required_resolutions from Redis for job %s: %v", jobID, err)
+		return
+	}
+	requiredReps := parseRequiredReps(requiredListStr)
+
 	args := []string{
 		"-dash", "4000",
 		"-rap", "-frag-rap",
 		"-out", localMPDPath,
 	}
 
-	// Add DASH profile only for H.264
+	// Add DASH profile based on codec
 	switch codec {
 	case "h264", "avc":
 		args = append([]string{"-profile", "dashavc264:live"}, args...)
@@ -100,7 +109,7 @@ func generateMPD(jobID string) {
 		args = append([]string{"-profile", "dashavc264:live"}, args...)
 	}
 
-	// Add segment files (all assumed .mp4)
+	// Add segment files dynamically
 	for _, rep := range requiredReps {
 		file := filepath.Join(segmentsDir, fmt.Sprintf("%s_%s.mp4", jobID, rep))
 		if _, err := os.Stat(file); os.IsNotExist(err) {
@@ -121,6 +130,7 @@ func generateMPD(jobID string) {
 
 	log.Printf("✅ MPD generated: %s", localMPDPath)
 
+	// Read additional metadata for DB
 	streamName, _ := redisClient.HGet(ctx, redisKey, "stream_name").Result()
 	inputURL, _ := redisClient.HGet(ctx, redisKey, "input_url").Result()
 
@@ -129,4 +139,16 @@ func generateMPD(jobID string) {
 	} else {
 		log.Printf("✅ Job metadata persisted to DB for job %s", jobID)
 	}
+}
+
+func parseRequiredReps(input string) []string {
+	parts := strings.Split(input, ",")
+	var reps []string
+	for _, p := range parts {
+		rep := strings.TrimSpace(p)
+		if rep != "" {
+			reps = append(reps, rep)
+		}
+	}
+	return reps
 }
