@@ -70,6 +70,8 @@ func MapCodecToFFmpeg(codec string) string {
 		return "libvvenc"
 	case "vp9":
 		return "libvpx-vp9"
+	case "av1":
+		return "libaom-av1"
 	default:
 		log.Printf("⚠️ Unsupported codec '%s'. Defaulting to h264 (libx264)", codec)
 		return "libx264"
@@ -125,27 +127,33 @@ func HandleTranscodeJob(job TranscodeJob) {
 		"-an",
 	}
 
-	// VP9-specific parameters (but still output MP4)
+	// VP9-specific parameters
 	if job.Codec == "vp9" {
 		args = append(args,
-			"-row-mt", "1",
 			"-deadline", "good",
 			"-cpu-used", "4",
-			"-f", "mp4",
 		)
 	}
 
-	// VVC-specific encoding options
+	// AV1-specific parameters (optional tuning)
+	if job.Codec == "av1" {
+		args = append(args,
+			"-cpu-used", "4",
+			"-strict", "experimental",
+		)
+	}
+
+	// VVC-specific parameters
 	if job.Codec == "vvc" || job.Codec == "h266" {
 		args = append(args,
 			"-preset", "medium",
 			"-threads", "4",
-			"-f", "mp4",
 		)
 	}
 
-	// Apply -movflags for all MP4 outputs
+	// Ensure MP4 output with streaming-friendly flags
 	args = append(args,
+		"-f", "mp4",
 		"-movflags", "+faststart+frag_keyframe+empty_moov+default_base_moof",
 		"-y", outputPath,
 	)

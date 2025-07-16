@@ -24,7 +24,8 @@ var validCodecs = map[string]bool{
 	"h264": true,
 	"hevc": true,
 	"vvc":  true,
-	"vp9":  true, // ✅ VP9 codec support
+	"vp9":  true,
+	"av1":  true, // ✅ AV1 codec support
 }
 
 func main() {
@@ -86,7 +87,6 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// Always output as .mp4 (including vp9 in mp4 container)
 		job := TranscodeJob{
 			JobID:          jobID,
 			InputURL:       req.InputURL,

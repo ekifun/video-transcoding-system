@@ -130,7 +130,7 @@ export default function App() {
       <View>
         <Text style={styles.label}>Codec:</Text>
         <View style={styles.codecOptions}>
-          {["h264", "hevc", "vvc", "vp9"].map((opt) => (
+          {["h264", "hevc", "vvc", "vp9", "av1"].map((opt) => (
             <TouchableOpacity
               key={opt}
               onPress={() => setCodec(opt)}

@@ -103,7 +103,9 @@ func generateMPD(jobID string) {
 	case "vvc", "h266":
 		log.Printf("ℹ️ VVC codec detected for job %s", jobID)
 	case "vp9":
-		log.Printf("ℹ️ VP9 codec detected for job %s (using MP4 container with MP4Box standard muxing)", jobID)
+		log.Printf("ℹ️ VP9 codec detected for job %s (using MP4 segments with standard muxing)", jobID)
+	case "av1":
+		log.Printf("ℹ️ AV1 codec detected for job %s (using MP4 segments with standard muxing)", jobID)
 	default:
 		log.Printf("⚠️ Unknown codec '%s' for job %s. Defaulting to dashavc264 profile.", codec, jobID)
 		args = append([]string{"-profile", "dashavc264:live"}, args...)
