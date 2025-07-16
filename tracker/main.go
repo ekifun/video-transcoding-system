@@ -59,11 +59,20 @@ func checkCompletedJobs() {
 			continue
 		}
 
+		// Skip if already published
+		if jobData["mpd_published"] == "true" {
+			continue
+		}
+
 		if allRepsDone(jobID, jobData) {
 			log.Printf("✅ All required resolutions done for job: %s", jobID)
 			publishReadyForMPD(jobID)
 
-			err := redisClient.HSet(ctx, key, "status", "ready_for_mpd").Err()
+			// Mark job as published to avoid duplicate triggers
+			err := redisClient.HSet(ctx, key, map[string]interface{}{
+				"status":        "ready_for_mpd",
+				"mpd_published": "true",
+			}).Err()
 			if err != nil {
 				log.Printf("⚠️ Failed to update job status in Redis: %v", err)
 			}
