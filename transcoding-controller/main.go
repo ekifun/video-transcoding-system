@@ -25,7 +25,7 @@ var validCodecs = map[string]bool{
 	"hevc": true,
 	"vvc":  true,
 	"vp9":  true,
-	"av1":  true, // ✅ AV1 codec support
+	"av1":  true,
 }
 
 func main() {
@@ -61,6 +61,7 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("📥 Received transcode request: %+v", req)
+	log.Printf("📥 GOP Size: %d, KeyintMin: %d", req.GopSize, req.KeyintMin)
 
 	if req.StreamName == "" || req.InputURL == "" || len(req.Resolutions) == 0 || req.Codec == "" {
 		http.Error(w, "Missing required fields", http.StatusBadRequest)
@@ -95,6 +96,8 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 			Bitrate:        info.Bitrate,
 			Codec:          req.Codec,
 			OutputPath:     fmt.Sprintf("s3://output/%s/video_%s.mp4", jobID, rep),
+			GopSize:        req.GopSize,     // ✅ Now passed
+			KeyintMin:      req.KeyintMin,   // ✅ Now passed
 		}
 
 		if err := PublishJob("transcode-jobs", job); err != nil {
