@@ -139,6 +139,10 @@ v2.0.0: Added HEVC support, unified Redis structure, and DASH output
 
 v3.0.0: Added support for VVC transcoding and DASH output
 
+v4.0.0: Added support for VP9 transcoding and DASH output
+
+v5.0.0: Added support for AV1 transcoding and DASH output
+
 ## Authors
 
 Chenghao Liu — Architect & Developer
