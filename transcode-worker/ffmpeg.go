@@ -132,15 +132,15 @@ func HandleTranscodeJob(job TranscodeJob) {
 	)
 
 	if job.Codec == "av1" {
-		// AV1 needs separate_moof + omit_tfhd_offset for DASH-compatible output
 		args = append(args,
 			"-movflags", "+faststart+frag_keyframe+separate_moof+omit_tfhd_offset",
 		)
+		log.Printf("ℹ️ [Job %s] Applied AV1-specific movflags for DASH compatibility", job.JobID)
 	} else {
 		args = append(args,
 			"-movflags", "+faststart+frag_keyframe+empty_moov+default_base_moof",
 		)
-	}
+	}	
 
 	args = append(args,
 		"-y", outputPath,
