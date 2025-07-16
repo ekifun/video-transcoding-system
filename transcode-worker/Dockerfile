@@ -14,39 +14,39 @@
   ENV DEBIAN_FRONTEND=noninteractive
   
   RUN apt-get update && apt-get install -y \
-    git cmake build-essential yasm pkg-config \
-    wget curl unzip nasm libnuma-dev \
-    zlib1g-dev libass-dev libfreetype6-dev libvorbis-dev \
-    libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev libxcb-shape0-dev \
-    libtool automake ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+      git cmake build-essential yasm pkg-config \
+      wget curl unzip nasm libnuma-dev \
+      zlib1g-dev libass-dev libfreetype6-dev libvorbis-dev \
+      libxcb1-dev libxcb-shm0-dev libxcb-xfixes0-dev libxcb-shape0-dev \
+      libtool automake ca-certificates && \
+      rm -rf /var/lib/apt/lists/*
   
   WORKDIR /opt
   
   # Build libx264 (shared)
   RUN git clone https://code.videolan.org/videolan/x264.git && \
-    cd x264 && \
-    ./configure --enable-shared --prefix=/usr/local && \
-    make -j$(nproc) && make install
+      cd x264 && \
+      ./configure --enable-shared --prefix=/usr/local && \
+      make -j$(nproc) && make install
   
   # Build libx265 (shared)
   RUN git clone https://bitbucket.org/multicoreware/x265_git && \
-    cd x265_git/build/linux && \
-    cmake -G "Unix Makefiles" -DENABLE_SHARED=ON ../../source && \
-    make -j$(nproc) && make install
+      cd x265_git/build/linux && \
+      cmake -G "Unix Makefiles" -DENABLE_SHARED=ON ../../source && \
+      make -j$(nproc) && make install
   
   # Build libvpx (VP8/VP9)
   RUN git clone https://chromium.googlesource.com/webm/libvpx && \
-    cd libvpx && \
-    ./configure --prefix=/usr/local --enable-shared --disable-static \
-      --enable-multithread --disable-examples --disable-unit-tests && \
-    make -j$(nproc) && make install
+      cd libvpx && \
+      ./configure --prefix=/usr/local --enable-shared --disable-static \
+        --enable-multithread --disable-examples --disable-unit-tests && \
+      make -j$(nproc) && make install
   
   # Build libaom (AV1)
   RUN git clone https://aomedia.googlesource.com/aom && \
-    cd aom && mkdir build && cd build && \
-    cmake .. -DENABLE_SHARED=ON -DCMAKE_INSTALL_PREFIX=/usr/local && \
-    make -j$(nproc) && make install
+      mkdir /opt/aom_build && cd /opt/aom_build && \
+      cmake ../aom -DENABLE_SHARED=ON -DCMAKE_INSTALL_PREFIX=/usr/local && \
+      make -j$(nproc) && make install
   
   # Build libvvenc (shared)
   RUN git clone --branch v1.6.1 https://github.com/fraunhoferhhi/vvenc.git && \
@@ -102,18 +102,18 @@
   ENV LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
   
   RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    libxcb1 \
-    libxcb-shm0 \
-    libxcb-xfixes0 \
-    libxcb-shape0 \
-    libnuma1 \
-    libass9 \
-    libfreetype6 \
-    libvorbis0a \
-    libvorbisenc2 \
-    zlib1g \
-    && rm -rf /var/lib/apt/lists/*
+      ca-certificates \
+      libxcb1 \
+      libxcb-shm0 \
+      libxcb-xfixes0 \
+      libxcb-shape0 \
+      libnuma1 \
+      libass9 \
+      libfreetype6 \
+      libvorbis0a \
+      libvorbisenc2 \
+      zlib1g \
+      && rm -rf /var/lib/apt/lists/*
   
   COPY --from=ffmpeg-builder-final /usr/local/bin/ffmpeg /usr/local/bin/
   COPY --from=ffmpeg-builder-final /usr/local/bin/ffprobe /usr/local/bin/
