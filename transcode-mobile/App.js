@@ -65,13 +65,22 @@ export default function App() {
       return;
     }
 
+    console.log("📋 GOP Size (string):", gopSize);
+    console.log("📋 KeyintMin (string):", keyintMin);
+
+    const parsedGopSize = parseInt(gopSize) || 48;
+    const parsedKeyintMin = parseInt(keyintMin) || 48;
+
+    console.log("📋 Parsed GOP Size (int):", parsedGopSize);
+    console.log("📋 Parsed KeyintMin (int):", parsedKeyintMin);
+
     const payload = {
       input_url: inputURL,
       resolutions: selected,
       codec,
       stream_name: "big-bunny-1080p",
-      gop_size: parseInt(gopSize),
-      keyint_min: parseInt(keyintMin),
+      gop_size: parsedGopSize,
+      keyint_min: parsedKeyintMin,
     };
 
     console.log("🚀 Submitting Payload:", payload);
