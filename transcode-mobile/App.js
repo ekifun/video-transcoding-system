@@ -74,6 +74,8 @@ export default function App() {
       keyint_min: parseInt(keyintMin),
     };
 
+    console.log("🚀 Submitting Payload:", payload);
+
     try {
       const res = await fetch("http://13.57.143.121:8080/transcode", {
         method: "POST",
