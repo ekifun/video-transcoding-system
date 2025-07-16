@@ -79,6 +79,8 @@ func MapCodecToFFmpeg(codec string) string {
 	}
 }
 
+// AV1 fix applied: pix_fmt, cpu-used, usage, and movflags
+
 func HandleTranscodeJob(job TranscodeJob) {
 	if job.Codec == "" {
 		job.Codec = "h264"
@@ -93,7 +95,6 @@ func HandleTranscodeJob(job TranscodeJob) {
 	}
 
 	redisKey := fmt.Sprintf("job:%s", job.JobID)
-
 	redisClient.HSet(ctx, redisKey, "codec", job.Codec)
 
 	ffmpegCodec := MapCodecToFFmpeg(job.Codec)
@@ -118,34 +119,30 @@ func HandleTranscodeJob(job TranscodeJob) {
 		"-an",
 	}
 
-	// VP9-specific parameters
-	if job.Codec == "vp9" {
-		args = append(args,
-			"-deadline", "good",
-			"-cpu-used", "4",
-		)
-	}
-
-	// ✅ AV1-specific parameters (critical fix)
 	if job.Codec == "av1" {
 		args = append(args,
+			"-pix_fmt", "yuv420p",
 			"-cpu-used", "4",
 			"-usage", "good",
-			"-pix_fmt", "yuv420p", // ensures decoders compatibility
-		)
-	}
-
-	// VVC-specific parameters
-	if job.Codec == "vvc" || job.Codec == "h266" {
-		args = append(args,
-			"-preset", "medium",
-			"-threads", "4",
 		)
 	}
 
 	args = append(args,
 		"-f", "mp4",
-		"-movflags", "+faststart+frag_keyframe+empty_moov+default_base_moof",
+	)
+
+	if job.Codec == "av1" {
+		// AV1 needs separate_moof + omit_tfhd_offset for DASH-compatible output
+		args = append(args,
+			"-movflags", "+faststart+frag_keyframe+separate_moof+omit_tfhd_offset",
+		)
+	} else {
+		args = append(args,
+			"-movflags", "+faststart+frag_keyframe+empty_moov+default_base_moof",
+		)
+	}
+
+	args = append(args,
 		"-y", outputPath,
 	)
 
@@ -168,4 +165,5 @@ func HandleTranscodeJob(job TranscodeJob) {
 	log.Printf("📦 [Job %s] Updated Redis → %s = done, %s_output = %s",
 		job.JobID, job.Representation, job.Representation, outputPath)
 }
+
 
