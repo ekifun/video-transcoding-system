@@ -107,8 +107,8 @@ func generateMPD(jobID string) {
 	case "av1":
 		log.Printf("ℹ️ AV1 codec detected for job %s (using MP4 segments with standard muxing)", jobID)
 	default:
-		log.Printf("⚠️ Unknown codec '%s' for job %s. Defaulting to dashavc264 profile.", codec, jobID)
-		args = append([]string{"-profile", "dashavc264:live"}, args...)
+		log.Printf("⚠️ Unknown codec '%s' for job %s. Proceeding with default DASH muxing without profile.", codec, jobID)
+		// No profile applied for unknown codecs.
 	}
 
 	for _, rep := range requiredReps {
