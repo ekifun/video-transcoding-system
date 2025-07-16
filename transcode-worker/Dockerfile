@@ -35,11 +35,17 @@
     cmake -G "Unix Makefiles" -DENABLE_SHARED=ON ../../source && \
     make -j$(nproc) && make install
   
-  # Build libvpx (without row-mt)
+  # Build libvpx (VP8/VP9)
   RUN git clone https://chromium.googlesource.com/webm/libvpx && \
     cd libvpx && \
     ./configure --prefix=/usr/local --enable-shared --disable-static \
       --enable-multithread --disable-examples --disable-unit-tests && \
+    make -j$(nproc) && make install
+  
+  # Build libaom (AV1)
+  RUN git clone https://aomedia.googlesource.com/aom && \
+    cd aom && mkdir build && cd build && \
+    cmake .. -DENABLE_SHARED=ON -DCMAKE_INSTALL_PREFIX=/usr/local && \
     make -j$(nproc) && make install
   
   # Build libvvenc (shared)
@@ -85,7 +91,7 @@
         --extra-ldflags="$(pkg-config --libs libvvenc)" \
         --enable-gpl --enable-nonfree \
         --enable-libx264 --enable-libx265 --enable-libvvenc \
-        --enable-libvpx \
+        --enable-libvpx --enable-libaom \
         --enable-shared && \
       make -j$(nproc) && make install
   
@@ -116,6 +122,7 @@
   COPY --from=ffmpeg-builder-final /usr/local/lib/libx264.so* /usr/local/lib/
   COPY --from=ffmpeg-builder-final /usr/local/lib/libx265.so* /usr/local/lib/
   COPY --from=ffmpeg-builder-final /usr/local/lib/libvpx.so* /usr/local/lib/
+  COPY --from=ffmpeg-builder-final /usr/local/lib/libaom.so* /usr/local/lib/
   
   RUN ldconfig
   
