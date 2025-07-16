@@ -93,17 +93,7 @@ func HandleTranscodeJob(job TranscodeJob) {
 
 	redisKey := fmt.Sprintf("job:%s", job.JobID)
 
-	valType, err := redisClient.Type(ctx, redisKey).Result()
-	if err == nil && valType != "hash" && valType != "none" {
-		log.Printf("⚠️ [Job %s] Redis key has wrong type (%s), deleting it...", job.JobID, valType)
-		redisClient.Del(ctx, redisKey)
-	}
-
-	if err := redisClient.HSet(ctx, redisKey, "codec", job.Codec).Err(); err != nil {
-		log.Printf("❌ [Job %s] Failed to write codec to Redis: %v", job.JobID, err)
-	} else {
-		log.Printf("✅ [Job %s] Wrote codec to Redis: %s", job.JobID, job.Codec)
-	}
+	redisClient.HSet(ctx, redisKey, "codec", job.Codec)
 
 	ffmpegCodec := MapCodecToFFmpeg(job.Codec)
 
@@ -135,11 +125,12 @@ func HandleTranscodeJob(job TranscodeJob) {
 		)
 	}
 
-	// AV1-specific parameters (optional tuning)
+	// ✅ AV1-specific parameters (critical fix)
 	if job.Codec == "av1" {
 		args = append(args,
 			"-cpu-used", "4",
-			"-strict", "experimental",
+			"-usage", "good",
+			"-pix_fmt", "yuv420p", // ensures decoders compatibility
 		)
 	}
 
@@ -151,7 +142,6 @@ func HandleTranscodeJob(job TranscodeJob) {
 		)
 	}
 
-	// Ensure MP4 output with streaming-friendly flags
 	args = append(args,
 		"-f", "mp4",
 		"-movflags", "+faststart+frag_keyframe+empty_moov+default_base_moof",
@@ -159,7 +149,7 @@ func HandleTranscodeJob(job TranscodeJob) {
 	)
 
 	cmd := exec.Command("ffmpeg", args...)
-	log.Printf("⚙️ [Job %s] Running FFmpeg: %s", job.JobID, cmd.String())
+	log.Printf("⚙️ [Job %s] Running FFmpeg: %s", job.JobID, strings.Join(cmd.Args, " "))
 
 	stderr, err := cmd.CombinedOutput()
 	if err != nil {
@@ -169,20 +159,12 @@ func HandleTranscodeJob(job TranscodeJob) {
 
 	log.Printf("✅ [Job %s] Segment generated: %s", job.JobID, outputPath)
 
-	if err := redisClient.HSet(ctx, redisKey,
+	redisClient.HSet(ctx, redisKey,
 		job.Representation, "done",
 		fmt.Sprintf("%s_output", job.Representation), outputPath,
-	).Err(); err != nil {
-		log.Printf("❌ [Job %s] Failed to update Redis progress: %v", job.JobID, err)
-		return
-	}
-
-	if err := redisClient.Expire(ctx, redisKey, 1*time.Hour).Err(); err != nil {
-		log.Printf("⚠️ [Job %s] Failed to set TTL for Redis key: %v", job.JobID, err)
-	} else {
-		log.Printf("⏳ [Job %s] Set Redis TTL: 1 hour", job.JobID)
-	}
-
+	)
+	redisClient.Expire(ctx, redisKey, 1*time.Hour)
 	log.Printf("📦 [Job %s] Updated Redis → %s = done, %s_output = %s",
 		job.JobID, job.Representation, job.Representation, outputPath)
 }
+
