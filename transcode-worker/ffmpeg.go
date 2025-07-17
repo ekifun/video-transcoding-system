@@ -17,16 +17,16 @@ import (
 
 var (
 	ctx         = context.Background()
-	redisAddr   = os.Getenv("REDIS_ADDR")
-	redisClient *redis.Client
 	outputDir   = "/segments"
+	redisAddr   = os.Getenv("REDIS_ADDR")
+	instanceID  = os.Getenv("WORKER_INSTANCE_ID") // Optional: unique per worker instance
+
+	jobTracker  *JobTracker
+	redisClient *redis.Client
+
+	const MaxConcurrentFFmpeg = 2
+	ffmpegSemaphore = make(chan struct{}, MaxConcurrentFFmpeg)
 )
-
-// Limit to N concurrent FFmpeg processes (tune per container)
-const MaxConcurrentFFmpeg = 2
-
-// Semaphore as a bounded worker pool
-var ffmpegSemaphore = make(chan struct{}, MaxConcurrentFFmpeg)
 
 func init() {
 	redisClient = redis.NewClient(&redis.Options{
@@ -35,7 +35,9 @@ func init() {
 	if _, err := redisClient.Ping(ctx).Result(); err != nil {
 		log.Fatalf("❌ Failed to connect to Redis: %v", err)
 	}
-	log.Println("✅ Connected to Redis")
+
+	jobTracker = NewJobTracker(redisAddr)
+	log.Println("✅ Connected to Redis (Job Tracker and Redis Client)")
 }
 
 func DownloadInput(inputURL string, jobID string) (string, error) {
@@ -85,21 +87,21 @@ func MapCodecToFFmpeg(codec string) string {
 	}
 }
 
-// Handles concurrency control and triggers actual transcoding
 func HandleTranscodeJob(job TranscodeJob) {
+	jobTracker.MarkJobWaiting(job.JobID, instanceID)
+
 	log.Printf("⏳ [Job %s] Waiting for FFmpeg slot...", job.JobID)
-	ffmpegSemaphore <- struct{}{} // Acquire semaphore slot
+	ffmpegSemaphore <- struct{}{}
 	log.Printf("🚦 [Job %s] FFmpeg slot acquired. Starting job...", job.JobID)
 
 	defer func() {
-		<-ffmpegSemaphore // Release slot after job completes
+		<-ffmpegSemaphore
 		log.Printf("🔓 [Job %s] FFmpeg slot released.", job.JobID)
 	}()
 
 	runTranscode(job)
 }
 
-// Actual transcoding logic after concurrency slot acquired
 func runTranscode(job TranscodeJob) {
 	if job.Codec == "" {
 		job.Codec = "h264"
@@ -108,14 +110,14 @@ func runTranscode(job TranscodeJob) {
 	log.Printf("📥 [Job %s] Processing Job | Codec=%s | Resolution=%s | Bitrate=%s | GOP=%d | KeyintMin=%d",
 		job.JobID, job.Codec, job.Resolution, job.Bitrate, job.GopSize, job.KeyintMin)
 
-	redisKey := fmt.Sprintf("job:%s", job.JobID)
-	redisClient.HSet(ctx, redisKey, "codec", job.Codec)
+	jobTracker.MarkJobProcessing(job.JobID)
 
 	ffmpegCodec := MapCodecToFFmpeg(job.Codec)
 
 	localInput, err := DownloadInput(job.InputURL, job.JobID)
 	if err != nil {
 		log.Printf("❌ [Job %s] Download failed: %v", job.JobID, err)
+		jobTracker.MarkJobFailed(job.JobID)
 		return
 	}
 	defer os.Remove(localInput)
@@ -130,21 +132,15 @@ func runTranscode(job TranscodeJob) {
 	stderr, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("❌ [Job %s] FFmpeg failed: %v\n%s", job.JobID, err, string(stderr))
+		jobTracker.MarkJobFailed(job.JobID)
 		return
 	}
 
 	log.Printf("✅ [Job %s] Segment generated: %s", job.JobID, outputPath)
 
-	redisClient.HSet(ctx, redisKey,
-		job.Representation, "done",
-		fmt.Sprintf("%s_output", job.Representation), outputPath,
-	)
-	redisClient.Expire(ctx, redisKey, 1*time.Hour)
-	log.Printf("📦 [Job %s] Updated Redis → %s = done, %s_output = %s",
-		job.JobID, job.Representation, job.Representation, outputPath)
+	jobTracker.MarkJobDone(job.JobID, outputPath)
 }
 
-// Builds FFmpeg command-line arguments cleanly
 func buildFFmpegArgs(input, output string, job TranscodeJob, codec string) []string {
 	args := []string{
 		"-i", input,

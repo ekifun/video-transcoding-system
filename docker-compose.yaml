@@ -41,12 +41,12 @@ services:
     environment:
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:9092
-      SQLITE_DB_PATH: /app/db/data/jobs.db   # ✅ for DB query endpoint
+      SQLITE_DB_PATH: /app/db/data/jobs.db
     depends_on:
       - kafka
       - redis
     volumes:
-      - db-data:/app/db/data                 # ✅ required for reading DB
+      - db-data:/app/db/data
     restart: unless-stopped
     tty: true
 
@@ -58,6 +58,7 @@ services:
     environment:
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:9092
+      WORKER_INSTANCE_ID: worker-1
     depends_on:
       - kafka
       - redis
@@ -71,6 +72,8 @@ services:
       context: ./tracker
     image: tracker:latest
     container_name: tracker
+    ports:
+      - "9000:9000"  # ✅ Expose /job-summary monitoring API
     environment:
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:9092
@@ -94,8 +97,8 @@ services:
       - kafka
       - redis
     volumes:
-      - segments-data:/segments   # ✅ shared transcoded files
-      - db-data:/app/db/data      # ✅ SQLite DB directory
+      - segments-data:/segments
+      - db-data:/app/db/data
     restart: unless-stopped
     tty: true
 

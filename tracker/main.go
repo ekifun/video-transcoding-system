@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -38,94 +39,43 @@ func init() {
 func main() {
 	log.Println("🚀 Starting transcode-complete-tracker...")
 
-	for {
-		checkCompletedJobs()
-		time.Sleep(5 * time.Second)
-	}
+	// Start background Redis monitoring
+	go func() {
+		for {
+			checkCompletedJobs()
+			time.Sleep(5 * time.Second)
+		}
+	}()
+
+	// Start HTTP API
+	http.HandleFunc("/job-summary", handleJobSummary)
+	log.Println("📡 Job Tracker API available at :9000/job-summary")
+	log.Fatal(http.ListenAndServe(":9000", nil))
 }
 
-func checkCompletedJobs() {
-	keys, err := redisClient.Keys(ctx, "job:*").Result()
-	if err != nil {
-		log.Printf("❌ Failed to scan Redis: %v", err)
-		return
+func handleJobSummary(w http.ResponseWriter, r *http.Request) {
+	counts := aggregateJobStatuses()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(counts)
+}
+
+func aggregateJobStatuses() map[string]int {
+	counts := map[string]int{
+		"waiting":    0,
+		"processing": 0,
+		"done":       0,
+		"failed":     0,
+		"ready_for_mpd": 0,
 	}
 
+	keys, _ := redisClient.Keys(ctx, "job:*").Result()
 	for _, key := range keys {
-		jobID := strings.TrimPrefix(key, "job:")
-		jobData, err := redisClient.HGetAll(ctx, key).Result()
-		if err != nil {
-			log.Printf("❌ Failed to read Redis hash for %s: %v", key, err)
-			continue
-		}
-
-		// Skip if already published
-		if jobData["mpd_published"] == "true" {
-			continue
-		}
-
-		if allRepsDone(jobID, jobData) {
-			log.Printf("✅ All required resolutions done for job: %s", jobID)
-			publishReadyForMPD(jobID)
-
-			// Mark job as published to avoid duplicate triggers
-			err := redisClient.HSet(ctx, key, map[string]interface{}{
-				"status":        "ready_for_mpd",
-				"mpd_published": "true",
-			}).Err()
-			if err != nil {
-				log.Printf("⚠️ Failed to update job status in Redis: %v", err)
-			}
-		}
-	}
-}
-
-func allRepsDone(jobID string, progress map[string]string) bool {
-	requiredListStr, ok := progress["required_resolutions"]
-	if !ok || requiredListStr == "" {
-		log.Printf("⚠️ Job %s missing or empty required_resolutions", jobID)
-		return false
-	}
-
-	requiredReps := parseRequiredReps(requiredListStr)
-	log.Printf("📋 Job %s required_resolutions: %s", jobID, strings.Join(requiredReps, ","))
-
-	for _, rep := range requiredReps {
-		status := progress[rep]
-		if status != "done" {
-			log.Printf("⏳ Job %s: %s not done yet (status=%s)", jobID, rep, status)
-			return false
+		status, err := redisClient.HGet(ctx, key, "status").Result()
+		if err == nil {
+			counts[status]++
 		}
 	}
 
-	return true
-}
-
-func parseRequiredReps(input string) []string {
-	parts := strings.Split(input, ",")
-	var reps []string
-	for _, p := range parts {
-		rep := strings.TrimSpace(p)
-		if rep != "" {
-			reps = append(reps, rep)
-		}
-	}
-	return reps
-}
-
-func publishReadyForMPD(jobID string) {
-	msg := map[string]string{
-		"job_id": jobID,
-		"status": "ready_for_mpd",
-	}
-	payload, _ := json.Marshal(msg)
-	err := kafkaWriter.WriteMessages(ctx, kafka.Message{
-		Key:   []byte(jobID),
-		Value: payload,
-	})
-	if err != nil {
-		log.Printf("❌ Kafka publish failed: %v", err)
-	} else {
-		log.Printf("📤 Kafka published: jobID=%s, topic=mpd-generation", jobID)
-	}
+	return counts
 }
