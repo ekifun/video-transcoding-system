@@ -22,6 +22,12 @@ var (
 	outputDir   = "/segments"
 )
 
+// Limit to N concurrent FFmpeg processes (tune per container)
+const MaxConcurrentFFmpeg = 4
+
+// Semaphore as a bounded worker pool
+var ffmpegSemaphore = make(chan struct{}, MaxConcurrentFFmpeg)
+
 func init() {
 	redisClient = redis.NewClient(&redis.Options{
 		Addr: redisAddr,
@@ -79,20 +85,28 @@ func MapCodecToFFmpeg(codec string) string {
 	}
 }
 
-// AV1 fix applied: pix_fmt, cpu-used, usage, and movflags
-
+// Handles concurrency control and triggers actual transcoding
 func HandleTranscodeJob(job TranscodeJob) {
+	log.Printf("⏳ [Job %s] Waiting for FFmpeg slot...", job.JobID)
+	ffmpegSemaphore <- struct{}{} // Acquire semaphore slot
+	log.Printf("🚦 [Job %s] FFmpeg slot acquired. Starting job...", job.JobID)
+
+	defer func() {
+		<-ffmpegSemaphore // Release slot after job completes
+		log.Printf("🔓 [Job %s] FFmpeg slot released.", job.JobID)
+	}()
+
+	runTranscode(job)
+}
+
+// Actual transcoding logic after concurrency slot acquired
+func runTranscode(job TranscodeJob) {
 	if job.Codec == "" {
 		job.Codec = "h264"
 	}
 
-	log.Printf("📥 [Job %s] Received Job | Codec=%s | Resolution=%s | Bitrate=%s | GOP=%d | KeyintMin=%d",
+	log.Printf("📥 [Job %s] Processing Job | Codec=%s | Resolution=%s | Bitrate=%s | GOP=%d | KeyintMin=%d",
 		job.JobID, job.Codec, job.Resolution, job.Bitrate, job.GopSize, job.KeyintMin)
-
-	if job.Resolution == "" || job.Bitrate == "" {
-		log.Printf("⚠️ [Job %s] Missing resolution or bitrate. Skipping job.", job.JobID)
-		return
-	}
 
 	redisKey := fmt.Sprintf("job:%s", job.JobID)
 	redisClient.HSet(ctx, redisKey, "codec", job.Codec)
@@ -108,43 +122,7 @@ func HandleTranscodeJob(job TranscodeJob) {
 
 	outputPath := filepath.Join(outputDir, fmt.Sprintf("%s_%s.mp4", job.JobID, job.Representation))
 
-	args := []string{
-		"-i", localInput,
-		"-vf", fmt.Sprintf("scale=%s", job.Resolution),
-		"-c:v", ffmpegCodec,
-		"-b:v", job.Bitrate,
-		"-g", fmt.Sprintf("%d", job.GopSize),
-		"-keyint_min", fmt.Sprintf("%d", job.KeyintMin),
-		"-sc_threshold", "0",
-		"-an",
-	}
-
-	if job.Codec == "av1" {
-		args = append(args,
-			"-pix_fmt", "yuv420p",
-			"-cpu-used", "4",
-			"-usage", "good",
-		)
-	}
-
-	args = append(args,
-		"-f", "mp4",
-	)
-
-	if job.Codec == "av1" {
-		args = append(args,
-			"-movflags", "+faststart+frag_keyframe+separate_moof+omit_tfhd_offset",
-		)
-		log.Printf("ℹ️ [Job %s] Applied AV1-specific movflags for DASH compatibility", job.JobID)
-	} else {
-		args = append(args,
-			"-movflags", "+faststart+frag_keyframe+empty_moov+default_base_moof",
-		)
-	}	
-
-	args = append(args,
-		"-y", outputPath,
-	)
+	args := buildFFmpegArgs(localInput, outputPath, job, ffmpegCodec)
 
 	cmd := exec.Command("ffmpeg", args...)
 	log.Printf("⚙️ [Job %s] Running FFmpeg: %s", job.JobID, strings.Join(cmd.Args, " "))
@@ -166,4 +144,32 @@ func HandleTranscodeJob(job TranscodeJob) {
 		job.JobID, job.Representation, job.Representation, outputPath)
 }
 
+// Builds FFmpeg command-line arguments cleanly
+func buildFFmpegArgs(input, output string, job TranscodeJob, codec string) []string {
+	args := []string{
+		"-i", input,
+		"-vf", fmt.Sprintf("scale=%s", job.Resolution),
+		"-c:v", codec,
+		"-b:v", job.Bitrate,
+		"-g", fmt.Sprintf("%d", job.GopSize),
+		"-keyint_min", fmt.Sprintf("%d", job.KeyintMin),
+		"-sc_threshold", "0",
+		"-an",
+	}
 
+	if job.Codec == "av1" {
+		args = append(args, "-pix_fmt", "yuv420p", "-cpu-used", "4", "-usage", "good")
+	}
+
+	args = append(args, "-f", "mp4")
+
+	if job.Codec == "av1" {
+		args = append(args, "-movflags", "+faststart+frag_keyframe+separate_moof+omit_tfhd_offset")
+	} else {
+		args = append(args, "-movflags", "+faststart+frag_keyframe+empty_moov+default_base_moof")
+	}
+
+	args = append(args, "-y", output)
+
+	return args
+}
