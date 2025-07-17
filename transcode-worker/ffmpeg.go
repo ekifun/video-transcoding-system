@@ -138,7 +138,8 @@ func runTranscode(job TranscodeJob) {
 
 	log.Printf("✅ [Job %s] Segment generated: %s", job.JobID, outputPath)
 
-	jobTracker.MarkJobDone(job.JobID, outputPath)
+	// ✅ Mark per-representation as done:
+	jobTracker.UpdateRepresentationStatus(job.JobID, job.Representation, "done", outputPath)
 }
 
 func buildFFmpegArgs(input, output string, job TranscodeJob, codec string) []string {
