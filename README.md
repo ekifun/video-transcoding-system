@@ -7,11 +7,11 @@
 This project provides an end-to-end video transcoding pipeline supporting multiple resolutions and codecs (H.264/AVC, HEVC, VVC, VP9, and AV1). It is built with Kafka, Redis, Go microservices, FFmpeg, and MP4Box for DASH packaging and adaptive streaming.
 
 ## Current Scalability Improvements in Progress
-### Per-Worker Concurrency Control (feature/concurrency-limit-worker)
+#### Per-Worker Concurrency Control (feature/concurrency-limit-worker)
 Implementing a semaphore-based worker pool to limit concurrent FFmpeg jobs within each container, ensuring safe and controlled processing.
-### Redis-Based Centralized Job State Tracking
+#### Redis-Based Centralized Job State Tracking
 Using Redis to centrally track job progress and state across the entire system for better visibility and management.
-### Optional (Recommended): Prometheus Metrics + Grafana Dashboards
+#### Optional (Recommended): Prometheus Metrics + Grafana Dashboards
 Adding Prometheus and Grafana to monitor real-time system load, active jobs, queue depth, and processing performance through interactive dashboards.
 
 ## 1. System Architecture Overview
