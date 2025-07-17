@@ -23,7 +23,7 @@ var (
 )
 
 // Limit to N concurrent FFmpeg processes (tune per container)
-const MaxConcurrentFFmpeg = 4
+const MaxConcurrentFFmpeg = 2
 
 // Semaphore as a bounded worker pool
 var ffmpegSemaphore = make(chan struct{}, MaxConcurrentFFmpeg)
