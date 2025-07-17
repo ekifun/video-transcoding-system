@@ -15,6 +15,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const MaxConcurrentFFmpeg = 2
+
 var (
 	ctx         = context.Background()
 	outputDir   = "/segments"
@@ -24,7 +26,6 @@ var (
 	jobTracker  *JobTracker
 	redisClient *redis.Client
 
-	const MaxConcurrentFFmpeg = 2
 	ffmpegSemaphore = make(chan struct{}, MaxConcurrentFFmpeg)
 )
 
