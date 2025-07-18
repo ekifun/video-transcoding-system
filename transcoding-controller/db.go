@@ -78,13 +78,15 @@ func GetAllTranscodedJobs(limit int) ([]TranscodedJob, error) {
 	var jobs []TranscodedJob
 	for rows.Next() {
 		var job TranscodedJob
+		var mpdURL sql.NullString  // ✅ Use sql.NullString for mpd_url
+
 		err := rows.Scan(
 			&job.JobID,
 			&job.StreamName,
 			&job.InputURL,
 			&job.Codec,
 			&job.Representations,
-			&job.MPDURL,
+			&mpdURL,  // ✅ Scan into sql.NullString
 			&job.Status,
 			&job.CreatedAt,
 			&job.UpdatedAt,
@@ -93,6 +95,13 @@ func GetAllTranscodedJobs(limit int) ([]TranscodedJob, error) {
 			log.Printf("⚠️ Scan error: %v", err)
 			continue
 		}
+
+		if mpdURL.Valid {
+			job.MPDURL = mpdURL.String
+		} else {
+			job.MPDURL = ""  // ✅ Set empty string if NULL
+		}
+
 		jobs = append(jobs, job)
 	}
 	return jobs, nil
