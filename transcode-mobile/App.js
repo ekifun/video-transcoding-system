@@ -36,7 +36,13 @@ export default function App() {
   const [jobs, setJobs] = useState([]);
 
   useEffect(() => {
-    loadJobs();
+    loadJobs();  // Initial fetch
+
+    const interval = setInterval(() => {
+      loadJobs();
+    }, 1000);  // Poll every 1 second
+
+    return () => clearInterval(interval);  // Cleanup
   }, []);
 
   const loadJobs = async () => {
@@ -65,14 +71,8 @@ export default function App() {
       return;
     }
 
-    console.log("📋 GOP Size (string):", gopSize);
-    console.log("📋 KeyintMin (string):", keyintMin);
-
     const parsedGopSize = parseInt(gopSize) || 48;
     const parsedKeyintMin = parseInt(keyintMin) || 48;
-
-    console.log("📋 Parsed GOP Size (int):", parsedGopSize);
-    console.log("📋 Parsed KeyintMin (int):", parsedKeyintMin);
 
     const payload = {
       input_url: inputURL,
@@ -82,8 +82,6 @@ export default function App() {
       gop_size: parsedGopSize,
       keyint_min: parsedKeyintMin,
     };
-
-    console.log("🚀 Submitting Payload:", payload);
 
     try {
       const res = await fetch("http://13.57.143.121:8080/transcode", {
@@ -178,12 +176,13 @@ export default function App() {
         <Button title={submitting ? "Submitting..." : "Submit"} onPress={handleSubmit} disabled={submitting} />
       </View>
 
-      <Text style={styles.label}>Recent Jobs:</Text>
+      <Text style={styles.label}>Recent Jobs (Auto-updating):</Text>
       {jobs.map((job) => (
         <View key={job.job_id} style={styles.jobCard}>
           <Text style={styles.jobText}>📦 {job.job_id}</Text>
           <Text>📺 {job.stream_name}</Text>
           <Text>📹 {job.codec.toUpperCase()} → {job.representations || "N/A"}</Text>
+          <Text>⏳ Status: {job.status || "N/A"}</Text>
           <TouchableOpacity onPress={() => copyToClipboard(job.mpd_url)}>
             <Text style={styles.mpdUrl}>🔗 {job.mpd_url}</Text>
           </TouchableOpacity>
