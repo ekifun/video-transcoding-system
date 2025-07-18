@@ -77,9 +77,12 @@ services:
     environment:
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:9092
+      SQLITE_DB_PATH: /app/db/data/jobs.db  # ✅ Ensure environment variable passed
     depends_on:
       - kafka
       - redis
+    volumes:
+      - db-data:/app/db/data   # ✅ Add volume to persist SQLite DB
     restart: unless-stopped
     tty: true
 
