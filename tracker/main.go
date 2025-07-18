@@ -76,18 +76,26 @@ func checkCompletedJobs() {
 			continue
 		}
 
+		// Fetch metadata from Redis
+		streamName := jobData["stream_name"]
+		inputURL := jobData["input_url"]
+		codec := jobData["codec"]
+		representations := jobData["required_resolutions"]
+		workerID := jobData["worker_id"]
 		currentStatus := jobData["status"]
 
-		// Sync status to DB
-		if err := UpdateJobStatus(jobID, currentStatus); err != nil {
-			log.Printf("⚠️ Failed to sync status to DB for job %s: %v", jobID, err)
+		// Always attempt DB insert/update early for visibility
+		err = InsertOrUpdateJob(jobID, streamName, inputURL, codec, representations, workerID, currentStatus)
+		if err != nil {
+			log.Printf("⚠️ Failed to sync job metadata to DB for job %s: %v", jobID, err)
 		}
 
-		// Publish if completed
+		// Skip if already published
 		if jobData["mpd_published"] == "true" {
 			continue
 		}
 
+		// Check if all representations are done and mark job as ready_for_mpd
 		if allRepsDone(jobData) {
 			log.Printf("✅ Job %s: all required representations done.", jobID)
 			publishReadyForMPD(jobID)
