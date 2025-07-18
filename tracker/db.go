@@ -10,7 +10,7 @@ import (
 
 var DB *sql.DB
 
-// InitDB initializes SQLite DB and creates the transcoding_jobs table if missing.
+// InitDB initializes SQLite DB and ensures transcoding_jobs table exists.
 func InitDB(dbPath string) {
 	var err error
 	DB, err = sql.Open("sqlite3", dbPath)
@@ -41,7 +41,7 @@ func InitDB(dbPath string) {
 	log.Println("📁 SQLite DB initialized and transcoding_jobs table ready.")
 }
 
-// InsertOrUpdateJob inserts or updates job metadata.
+// InsertOrUpdateJob performs an upsert into transcoding_jobs table.
 func InsertOrUpdateJob(jobID, streamName, inputURL, codec, representations, workerID, status string) error {
 	stmt := `
 	INSERT INTO transcoding_jobs (
@@ -68,7 +68,7 @@ func InsertOrUpdateJob(jobID, streamName, inputURL, codec, representations, work
 	return nil
 }
 
-// UpdateJobStatus updates only the job status field.
+// UpdateJobStatus updates only the job status in DB.
 func UpdateJobStatus(jobID, status string) error {
 	stmt := `
 	UPDATE transcoding_jobs
@@ -85,7 +85,7 @@ func UpdateJobStatus(jobID, status string) error {
 	return nil
 }
 
-// UpdateMPDUrl sets the MPD URL after MPD generation.
+// UpdateMPDUrl sets the mpd_url for a given job.
 func UpdateMPDUrl(jobID, mpdURL string) error {
 	stmt := `
 	UPDATE transcoding_jobs
@@ -102,7 +102,7 @@ func UpdateMPDUrl(jobID, mpdURL string) error {
 	return nil
 }
 
-// GetJobByID fetches existing job metadata for safe updates.
+// GetJobByID fetches existing metadata for safe updates.
 func GetJobByID(jobID string) (map[string]string, error) {
 	stmt := `
 	SELECT stream_name, input_url, codec, representations, worker_id, status
@@ -115,23 +115,23 @@ func GetJobByID(jobID string) (map[string]string, error) {
 	err := row.Scan(&streamName, &inputURL, &codec, &representations, &workerID, &status)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// Return empty map for new jobs
+			// Empty map for new jobs
 			return make(map[string]string), nil
 		}
 		return nil, fmt.Errorf("❌ Failed to fetch job %s: %w", jobID, err)
 	}
 
 	return map[string]string{
-		"stream_name":       streamName,
-		"input_url":         inputURL,
-		"codec":             codec,
-		"representations":   representations,
-		"worker_id":         workerID,
-		"status":            status,
+		"stream_name":     streamName,
+		"input_url":       inputURL,
+		"codec":           codec,
+		"representations": representations,
+		"worker_id":       workerID,
+		"status":          status,
 	}, nil
 }
 
-// SafeUpdateJobMetadata avoids overwriting valid DB metadata with empty Redis fields.
+// SafeUpdateJobMetadata prevents overwriting valid DB metadata with missing Redis values.
 func SafeUpdateJobMetadata(jobID, streamName, inputURL, codec, representations, workerID, status string) error {
 	existing, err := GetJobByID(jobID)
 	if err != nil {

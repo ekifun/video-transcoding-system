@@ -81,20 +81,27 @@ func checkCompletedJobs() {
 		workerID := jobData["worker_id"]
 		currentStatus := jobData["status"]
 
-		// Safely update DB: avoid overwriting with empty fields
+		// Safely update DB metadata
 		err = SafeUpdateJobMetadata(jobID, streamName, inputURL, codec, representations, workerID, currentStatus)
 		if err != nil {
 			log.Printf("⚠️ Failed to sync metadata to DB for job %s: %v", jobID, err)
 		}
 
-		// Prevent duplicate Kafka notifications
+		// Promote from waiting → transcoding if any representation is processing
+		if currentStatus == "waiting" && hasActiveRepresentation(jobData) {
+			log.Printf("🚧 Job %s entering transcoding...", jobID)
+			redisClient.HSet(ctx, key, "status", "transcoding")
+			_ = UpdateJobStatus(jobID, "transcoding")
+		}
+
+		// Skip completed jobs
 		if jobData["mpd_published"] == "true" {
 			continue
 		}
 
-		// If all representations completed, mark as ready_for_mpd
+		// If all representations done, mark job as ready_for_mpd
 		if allRepsDone(jobData) {
-			log.Printf("✅ Job %s: all required representations done.", jobID)
+			log.Printf("✅ Job %s all representations done. Marking ready_for_mpd.", jobID)
 			publishReadyForMPD(jobID)
 
 			redisClient.HSet(ctx, key, map[string]interface{}{
@@ -107,12 +114,25 @@ func checkCompletedJobs() {
 	}
 }
 
+func hasActiveRepresentation(jobData map[string]string) bool {
+	requiredListStr, ok := jobData["required_resolutions"]
+	if !ok || requiredListStr == "" {
+		return false
+	}
+	requiredReps := parseRequiredReps(requiredListStr)
+	for _, rep := range requiredReps {
+		if jobData[rep] == "processing" {
+			return true
+		}
+	}
+	return false
+}
+
 func allRepsDone(jobData map[string]string) bool {
 	requiredListStr, ok := jobData["required_resolutions"]
 	if !ok || requiredListStr == "" {
 		return false
 	}
-
 	requiredReps := parseRequiredReps(requiredListStr)
 	for _, rep := range requiredReps {
 		if jobData[rep] != "done" {
@@ -161,6 +181,7 @@ func handleJobSummary(w http.ResponseWriter, r *http.Request) {
 func aggregateJobStatuses() map[string]int {
 	counts := map[string]int{
 		"waiting":       0,
+		"transcoding":   0,
 		"processing":    0,
 		"done":          0,
 		"failed":        0,
