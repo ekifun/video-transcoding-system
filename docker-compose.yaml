@@ -73,16 +73,16 @@ services:
     image: tracker:latest
     container_name: tracker
     ports:
-      - "9000:9000"  # ✅ Expose /job-summary monitoring API
+      - "9000:9000"
     environment:
       REDIS_ADDR: redis:6379
       KAFKA_BROKERS: kafka:9092
-      SQLITE_DB_PATH: /app/db/data/jobs.db  # ✅ Ensure environment variable passed
+      SQLITE_DB_PATH: /app/db/data/jobs.db
     depends_on:
       - kafka
       - redis
     volumes:
-      - db-data:/app/db/data   # ✅ Add volume to persist SQLite DB
+      - db-data:/app/db/data
     restart: unless-stopped
     tty: true
 

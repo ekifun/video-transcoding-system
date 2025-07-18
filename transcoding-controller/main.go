@@ -33,7 +33,7 @@ func main() {
 
 	InitKafka()
 	InitRedis()
-	InitDB()  // Initialize SQLite for /jobs endpoint
+	InitDB()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -41,7 +41,7 @@ func main() {
 	})
 
 	http.HandleFunc("/transcode", handleTranscodeRequest)
-	http.HandleFunc("/jobs", handleListJobs)  // List jobs from DB
+	http.HandleFunc("/jobs", handleListJobs)
 
 	log.Println("🚀 Controller running on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -74,12 +74,20 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 	jobID := uuid.New().String()
 	log.Printf("🆕 New transcode job: %s", jobID)
 
+	// Store metadata in Redis
 	if err := StoreJobMetadata(jobID, req); err != nil {
 		http.Error(w, "Failed to store metadata", http.StatusInternalServerError)
 		log.Printf("❌ Failed to store metadata: %v", err)
 		return
 	}
 
+	// Write job to DB immediately with "waiting" status
+	err := InsertJobToDB(jobID, req.StreamName, req.InputURL, req.Codec, req.Resolutions, "waiting")
+	if err != nil {
+		log.Printf("⚠️ Failed to insert job to DB: %v", err)
+	}
+
+	// Dispatch transcoding jobs to Kafka
 	for _, rep := range req.Resolutions {
 		info, ok := resolutionMap[rep]
 		if !ok {
@@ -111,7 +119,7 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleListJobs(w http.ResponseWriter, r *http.Request) {
-	jobs, err := GetAllTranscodedJobs(50)  // Fetch directly from SQLite DB
+	jobs, err := GetAllTranscodedJobs(50)
 	if err != nil {
 		http.Error(w, "Failed to fetch jobs", http.StatusInternalServerError)
 		log.Printf("❌ Failed to fetch jobs: %v", err)

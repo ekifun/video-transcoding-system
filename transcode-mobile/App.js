@@ -36,13 +36,11 @@ export default function App() {
   const [jobs, setJobs] = useState([]);
 
   useEffect(() => {
-    loadJobs();  // Initial fetch
-
+    loadJobs();
     const interval = setInterval(() => {
       loadJobs();
-    }, 1000);  // Poll every 1 second
-
-    return () => clearInterval(interval);  // Cleanup
+    }, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadJobs = async () => {
@@ -64,23 +62,19 @@ export default function App() {
   const handleSubmit = async () => {
     setSubmitting(true);
     const selected = Object.keys(resolutions).filter((res) => resolutions[res]);
-
     if (selected.length === 0) {
       Alert.alert("⚠️ Please select at least one resolution.");
       setSubmitting(false);
       return;
     }
 
-    const parsedGopSize = parseInt(gopSize) || 48;
-    const parsedKeyintMin = parseInt(keyintMin) || 48;
-
     const payload = {
       input_url: inputURL,
       resolutions: selected,
       codec,
       stream_name: "big-bunny-1080p",
-      gop_size: parsedGopSize,
-      keyint_min: parsedKeyintMin,
+      gop_size: parseInt(gopSize) || 48,
+      keyint_min: parseInt(keyintMin) || 48,
     };
 
     try {
@@ -105,12 +99,27 @@ export default function App() {
   };
 
   const copyToClipboard = async (url) => {
+    if (!url) return;
     await Clipboard.setStringAsync(url);
     if (Platform.OS === 'android') {
       ToastAndroid.show("📋 MPD URL copied", ToastAndroid.SHORT);
     } else {
       Alert.alert("Copied", "MPD URL copied to clipboard");
     }
+  };
+
+  const renderStatus = (status) => {
+    let color = "#555";
+    if (status === "waiting") color = "#999";
+    if (status === "processing") color = "orange";
+    if (status === "ready_for_mpd") color = "blue";
+    if (status === "done") color = "green";
+
+    return (
+      <Text style={{ color, fontWeight: "bold" }}>
+        {status ? status.toUpperCase() : "UNKNOWN"}
+      </Text>
+    );
   };
 
   return (
@@ -136,41 +145,37 @@ export default function App() {
         </View>
       ))}
 
-      <View>
-        <Text style={styles.label}>Codec:</Text>
-        <View style={styles.codecOptions}>
-          {["h264", "hevc", "vvc", "vp9", "av1"].map((opt) => (
-            <TouchableOpacity
-              key={opt}
-              onPress={() => setCodec(opt)}
-              style={styles.radioRow}
-            >
-              <View style={styles.radioCircle}>
-                {codec === opt && <View style={styles.radioDot} />}
-              </View>
-              <Text style={styles.checkboxLabel}>{opt.toUpperCase()}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      <Text style={styles.label}>Codec:</Text>
+      <View style={styles.codecOptions}>
+        {["h264", "hevc", "vvc", "vp9", "av1"].map((opt) => (
+          <TouchableOpacity
+            key={opt}
+            onPress={() => setCodec(opt)}
+            style={styles.radioRow}
+          >
+            <View style={styles.radioCircle}>
+              {codec === opt && <View style={styles.radioDot} />}
+            </View>
+            <Text style={styles.checkboxLabel}>{opt.toUpperCase()}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
-      <View>
-        <Text style={styles.label}>GOP Size (-g):</Text>
-        <TextInput
-          style={styles.input}
-          value={gopSize}
-          onChangeText={setGopSize}
-          keyboardType="numeric"
-        />
+      <Text style={styles.label}>GOP Size (-g):</Text>
+      <TextInput
+        style={styles.input}
+        value={gopSize}
+        onChangeText={setGopSize}
+        keyboardType="numeric"
+      />
 
-        <Text style={styles.label}>Key Frame Interval (keyint_min):</Text>
-        <TextInput
-          style={styles.input}
-          value={keyintMin}
-          onChangeText={setKeyintMin}
-          keyboardType="numeric"
-        />
-      </View>
+      <Text style={styles.label}>Key Frame Interval (keyint_min):</Text>
+      <TextInput
+        style={styles.input}
+        value={keyintMin}
+        onChangeText={setKeyintMin}
+        keyboardType="numeric"
+      />
 
       <View style={styles.submitBtn}>
         <Button title={submitting ? "Submitting..." : "Submit"} onPress={handleSubmit} disabled={submitting} />
@@ -182,10 +187,14 @@ export default function App() {
           <Text style={styles.jobText}>📦 {job.job_id}</Text>
           <Text>📺 {job.stream_name}</Text>
           <Text>📹 {job.codec.toUpperCase()} → {job.representations || "N/A"}</Text>
-          <Text>⏳ Status: {job.status || "N/A"}</Text>
-          <TouchableOpacity onPress={() => copyToClipboard(job.mpd_url)}>
-            <Text style={styles.mpdUrl}>🔗 {job.mpd_url}</Text>
-          </TouchableOpacity>
+          <Text>Status: {renderStatus(job.status)}</Text>
+          {job.mpd_url ? (
+            <TouchableOpacity onPress={() => copyToClipboard(job.mpd_url)}>
+              <Text style={styles.mpdUrl}>🔗 {job.mpd_url}</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={{ color: "#aaa" }}>⏳ MPD Not Available</Text>
+          )}
         </View>
       ))}
     </ScrollView>
