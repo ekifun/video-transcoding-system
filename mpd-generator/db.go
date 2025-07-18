@@ -11,9 +11,9 @@ import (
 
 var DB *sql.DB
 
-// InitDB initializes the SQLite database and creates the transcoded_jobs table.
+// InitDB establishes a connection to the existing SQLite DB.
 func InitDB() {
-	dbPath := os.Getenv("SQLITE_DB_PATH") // Correct environment variable key
+	dbPath := os.Getenv("SQLITE_DB_PATH")
 	if dbPath == "" {
 		log.Fatal("❌ SQLITE_DB_PATH environment variable is not set")
 	}
@@ -24,34 +24,21 @@ func InitDB() {
 		log.Fatalf("❌ Failed to open SQLite DB: %v", err)
 	}
 
-	createTable := `
-	CREATE TABLE IF NOT EXISTS transcoded_jobs (
-		job_id TEXT PRIMARY KEY,
-		stream_name TEXT,
-		input_url TEXT,
-		codec TEXT,
-		representations TEXT,
-		mpd_url TEXT,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);`
-
-	_, err = DB.Exec(createTable)
-	if err != nil {
-		log.Fatalf("❌ Failed to create transcoded_jobs table: %v", err)
-	}
-	log.Println("📁 SQLite DB initialized.")
+	log.Println("📁 SQLite DB initialized (mpd-generator).")
 }
 
-// SaveJobToDB inserts or updates a job record into the transcoded_jobs table.
-func SaveJobToDB(jobID, streamName, inputURL, codec, representations, mpdURL string) error {
+// UpdateMPDUrl updates only the mpd_url field for a given job_id.
+func UpdateMPDUrl(jobID, mpdURL string) error {
 	stmt := `
-	INSERT OR REPLACE INTO transcoded_jobs
-	(job_id, stream_name, input_url, codec, representations, mpd_url)
-	VALUES (?, ?, ?, ?, ?, ?);`
+	UPDATE transcoding_jobs
+	SET mpd_url = ?, updated_at = CURRENT_TIMESTAMP
+	WHERE job_id = ?;`
 
-	_, err := DB.Exec(stmt, jobID, streamName, inputURL, codec, representations, mpdURL)
+	_, err := DB.Exec(stmt, mpdURL, jobID)
 	if err != nil {
-		return fmt.Errorf("❌ DB insert error: %w", err)
+		return fmt.Errorf("❌ Failed to update MPD URL for job %s: %w", jobID, err)
 	}
+
+	log.Printf("✅ Updated MPD URL for job %s", jobID)
 	return nil
 }

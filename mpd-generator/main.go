@@ -32,14 +32,14 @@ type MPDMessage struct {
 func main() {
 	log.Println("🚀 Starting MPD Generator...")
 
-	InitDB()
+	InitDB() // Only for updating mpd_url
 
 	if _, err := redisClient.Ping(ctx).Result(); err != nil {
 		log.Fatalf("❌ Failed to connect to Redis: %v", err)
 	}
 	log.Println("✅ Connected to Redis")
 
-	r := kafka.NewReader(kafka.ReaderConfig{
+	reader := kafka.NewReader(kafka.ReaderConfig{
 		Brokers:  []string{os.Getenv("KAFKA_BROKER")},
 		Topic:    "mpd-generation",
 		GroupID:  "mpd-generator",
@@ -48,7 +48,7 @@ func main() {
 	})
 
 	for {
-		m, err := r.ReadMessage(ctx)
+		m, err := reader.ReadMessage(ctx)
 		if err != nil {
 			log.Fatalf("❌ Kafka read error: %v", err)
 		}
@@ -87,7 +87,6 @@ func generateMPD(jobID string) {
 		return
 	}
 	requiredReps := parseRequiredReps(requiredListStr)
-	log.Printf("📋 Job %s required_resolutions: %s", jobID, strings.Join(requiredReps, ","))
 
 	args := []string{
 		"-dash", "4000",
@@ -95,28 +94,14 @@ func generateMPD(jobID string) {
 		"-out", localMPDPath,
 	}
 
-	switch codec {
-	case "h264", "avc":
+	if codec == "h264" || codec == "avc" {
 		args = append([]string{"-profile", "dashavc264:live"}, args...)
-	case "hevc", "h265":
-		log.Printf("ℹ️ HEVC codec detected for job %s", jobID)
-	case "vvc", "h266":
-		log.Printf("ℹ️ VVC codec detected for job %s", jobID)
-	case "vp9":
-		log.Printf("ℹ️ VP9 codec detected for job %s (using MP4 segments with standard muxing)", jobID)
-	case "av1":
-		log.Printf("ℹ️ AV1 codec detected for job %s (using MP4 segments with standard muxing)", jobID)
-	default:
-		log.Printf("⚠️ Unknown codec '%s' for job %s. Proceeding with default DASH muxing without profile.", codec, jobID)
-		// No profile applied for unknown codecs.
 	}
 
 	for _, rep := range requiredReps {
 		file := filepath.Join(segmentsDir, fmt.Sprintf("%s_%s.mp4", jobID, rep))
-		log.Printf("🔎 Checking for segment file: %s", file)
-
 		if _, err := os.Stat(file); os.IsNotExist(err) {
-			log.Printf("⚠️ Missing representation file: %s", file)
+			log.Printf("⚠️ Missing segment file: %s", file)
 			return
 		}
 		args = append(args, file)
@@ -125,23 +110,19 @@ func generateMPD(jobID string) {
 	cmd := exec.Command("MP4Box", args...)
 	log.Printf("📦 Running MP4Box: %s", strings.Join(cmd.Args, " "))
 
-	out, err := cmd.CombinedOutput()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("❌ MP4Box error: %v\n%s", err, string(out))
+		log.Printf("❌ MP4Box failed: %v\n%s", err, string(output))
 		return
 	}
 
 	log.Printf("✅ MPD generated: %s", localMPDPath)
 
-	streamName, _ := redisClient.HGet(ctx, redisKey, "stream_name").Result()
-	inputURL, _ := redisClient.HGet(ctx, redisKey, "input_url").Result()
-
-	log.Printf("💾 Saving to DB representations: %s", strings.Join(requiredReps, ","))
-
-	if err := SaveJobToDB(jobID, streamName, inputURL, codec, strings.Join(requiredReps, ","), publicMPDURL); err != nil {
-		log.Printf("⚠️ Failed to persist job to DB: %v", err)
+	// Update only MPD URL in DB
+	if err := UpdateMPDUrl(jobID, publicMPDURL); err != nil {
+		log.Printf("⚠️ Failed to update MPD URL in DB for job %s: %v", jobID, err)
 	} else {
-		log.Printf("✅ Job metadata persisted to DB for job %s", jobID)
+		log.Printf("✅ MPD URL updated in DB for job %s", jobID)
 	}
 }
 

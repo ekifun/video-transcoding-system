@@ -34,12 +34,19 @@ func init() {
 		Topic:    "mpd-generation",
 		Balancer: &kafka.LeastBytes{},
 	}
+
+	// SQLite DB
+	dbPath := os.Getenv("SQLITE_DB_PATH")
+	if dbPath == "" {
+		dbPath = "/app/db/data/jobs.db"
+	}
+	InitDB(dbPath)
 }
 
 func main() {
 	log.Println("🚀 Starting tracker (monitor + API)...")
 
-	// Start background job completion monitor
+	// Background: Redis job monitor and DB sync
 	go func() {
 		for {
 			checkCompletedJobs()
@@ -47,12 +54,13 @@ func main() {
 		}
 	}()
 
-	// Start HTTP monitoring API
+	// HTTP Monitoring API
 	http.HandleFunc("/job-summary", handleJobSummary)
 	log.Println("📡 Tracker API running on :9000/job-summary")
 	log.Fatal(http.ListenAndServe(":9000", nil))
 }
 
+// Check Redis jobs, update DB, publish when ready
 func checkCompletedJobs() {
 	keys, err := redisClient.Keys(ctx, "job:*").Result()
 	if err != nil {
@@ -68,6 +76,14 @@ func checkCompletedJobs() {
 			continue
 		}
 
+		currentStatus := jobData["status"]
+
+		// Sync status to DB
+		if err := UpdateJobStatus(jobID, currentStatus); err != nil {
+			log.Printf("⚠️ Failed to sync status to DB for job %s: %v", jobID, err)
+		}
+
+		// Publish if completed
 		if jobData["mpd_published"] == "true" {
 			continue
 		}
@@ -76,15 +92,17 @@ func checkCompletedJobs() {
 			log.Printf("✅ Job %s: all required representations done.", jobID)
 			publishReadyForMPD(jobID)
 
-			// Mark job as ready and avoid duplicate publishing
 			redisClient.HSet(ctx, key, map[string]interface{}{
 				"status":        "ready_for_mpd",
 				"mpd_published": "true",
 			})
+
+			_ = UpdateJobStatus(jobID, "ready_for_mpd")
 		}
 	}
 }
 
+// Check if all representations marked done
 func allRepsDone(jobData map[string]string) bool {
 	requiredListStr, ok := jobData["required_resolutions"]
 	if !ok || requiredListStr == "" {
@@ -92,7 +110,6 @@ func allRepsDone(jobData map[string]string) bool {
 	}
 
 	requiredReps := parseRequiredReps(requiredListStr)
-
 	for _, rep := range requiredReps {
 		if jobData[rep] != "done" {
 			return false
@@ -113,6 +130,7 @@ func parseRequiredReps(input string) []string {
 	return reps
 }
 
+// Notify mpd-generator via Kafka
 func publishReadyForMPD(jobID string) {
 	msg := map[string]string{
 		"job_id": jobID,
@@ -131,12 +149,14 @@ func publishReadyForMPD(jobID string) {
 	}
 }
 
+// Expose summary via API
 func handleJobSummary(w http.ResponseWriter, r *http.Request) {
 	counts := aggregateJobStatuses()
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(counts)
 }
 
+// Count statuses via Redis
 func aggregateJobStatuses() map[string]int {
 	counts := map[string]int{
 		"waiting":       0,
