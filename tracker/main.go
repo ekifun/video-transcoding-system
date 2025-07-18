@@ -73,6 +73,7 @@ func checkCompletedJobs() {
 			continue
 		}
 
+		// Extract job fields from Redis
 		streamName := jobData["stream_name"]
 		inputURL := jobData["input_url"]
 		codec := jobData["codec"]
@@ -80,8 +81,8 @@ func checkCompletedJobs() {
 		workerID := jobData["worker_id"]
 		currentStatus := jobData["status"]
 
-		// Ensure DB entry exists as soon as job is visible
-		err = InsertOrUpdateJob(jobID, streamName, inputURL, codec, representations, workerID, currentStatus)
+		// Safely update DB: avoid overwriting with empty fields
+		err = SafeUpdateJobMetadata(jobID, streamName, inputURL, codec, representations, workerID, currentStatus)
 		if err != nil {
 			log.Printf("⚠️ Failed to sync metadata to DB for job %s: %v", jobID, err)
 		}

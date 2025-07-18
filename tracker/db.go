@@ -68,7 +68,7 @@ func InsertOrUpdateJob(jobID, streamName, inputURL, codec, representations, work
 	return nil
 }
 
-// UpdateJobStatus updates the job status field.
+// UpdateJobStatus updates only the job status field.
 func UpdateJobStatus(jobID, status string) error {
 	stmt := `
 	UPDATE transcoding_jobs
@@ -100,4 +100,62 @@ func UpdateMPDUrl(jobID, mpdURL string) error {
 
 	log.Printf("✅ DB MPD URL update: job_id=%s, mpd_url=%s", jobID, mpdURL)
 	return nil
+}
+
+// GetJobByID fetches existing job metadata for safe updates.
+func GetJobByID(jobID string) (map[string]string, error) {
+	stmt := `
+	SELECT stream_name, input_url, codec, representations, worker_id, status
+	FROM transcoding_jobs
+	WHERE job_id = ?;
+	`
+
+	row := DB.QueryRow(stmt, jobID)
+	var streamName, inputURL, codec, representations, workerID, status string
+	err := row.Scan(&streamName, &inputURL, &codec, &representations, &workerID, &status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Return empty map for new jobs
+			return make(map[string]string), nil
+		}
+		return nil, fmt.Errorf("❌ Failed to fetch job %s: %w", jobID, err)
+	}
+
+	return map[string]string{
+		"stream_name":       streamName,
+		"input_url":         inputURL,
+		"codec":             codec,
+		"representations":   representations,
+		"worker_id":         workerID,
+		"status":            status,
+	}, nil
+}
+
+// SafeUpdateJobMetadata avoids overwriting valid DB metadata with empty Redis fields.
+func SafeUpdateJobMetadata(jobID, streamName, inputURL, codec, representations, workerID, status string) error {
+	existing, err := GetJobByID(jobID)
+	if err != nil {
+		return err
+	}
+
+	if streamName == "" {
+		streamName = existing["stream_name"]
+	}
+	if inputURL == "" {
+		inputURL = existing["input_url"]
+	}
+	if codec == "" {
+		codec = existing["codec"]
+	}
+	if representations == "" {
+		representations = existing["representations"]
+	}
+	if workerID == "" {
+		workerID = existing["worker_id"]
+	}
+	if status == "" {
+		status = existing["status"]
+	}
+
+	return InsertOrUpdateJob(jobID, streamName, inputURL, codec, representations, workerID, status)
 }
