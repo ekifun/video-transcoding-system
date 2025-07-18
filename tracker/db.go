@@ -111,24 +111,32 @@ func GetJobByID(jobID string) (map[string]string, error) {
 	`
 
 	row := DB.QueryRow(stmt, jobID)
-	var streamName, inputURL, codec, representations, workerID, status string
+
+	var streamName, inputURL, codec, representations, workerID, status sql.NullString
+
 	err := row.Scan(&streamName, &inputURL, &codec, &representations, &workerID, &status)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			// Empty map for new jobs
 			return make(map[string]string), nil
 		}
 		return nil, fmt.Errorf("❌ Failed to fetch job %s: %w", jobID, err)
 	}
 
 	return map[string]string{
-		"stream_name":     streamName,
-		"input_url":       inputURL,
-		"codec":           codec,
-		"representations": representations,
-		"worker_id":       workerID,
-		"status":          status,
+		"stream_name":     nullStringToString(streamName),
+		"input_url":       nullStringToString(inputURL),
+		"codec":           nullStringToString(codec),
+		"representations": nullStringToString(representations),
+		"worker_id":       nullStringToString(workerID),
+		"status":          nullStringToString(status),
 	}, nil
+}
+
+func nullStringToString(ns sql.NullString) string {
+	if ns.Valid {
+		return ns.String
+	}
+	return ""
 }
 
 // SafeUpdateJobMetadata prevents overwriting valid DB metadata with missing Redis values.
