@@ -1,3 +1,38 @@
+#!/bin/bash
+
+set -e
+
+echo "📁 Navigating to project root..."
+cd "$(dirname "$0")"
+
+# Function to initialize Go module and install dependencies in a given directory
+init_go_mod() {
+  local service_dir=$1
+  local module_name=$2
+  shift 2
+  local dependencies=("$@")
+
+  echo "🔍 Checking $service_dir for go.mod..."
+  if [ ! -f "$service_dir/go.mod" ]; then
+    echo "🧩 Initializing Go module in $service_dir..."
+    pushd "$service_dir" > /dev/null
+    go mod init "$module_name"
+  else
+    echo "✅ go.mod exists in $service_dir. Tidying dependencies..."
+    pushd "$service_dir" > /dev/null
+  fi
+
+  go mod tidy
+
+  for dep in "${dependencies[@]}"; do
+    echo "📦 Ensuring dependency: $dep"
+    go get "$dep"
+  done
+
+  go mod tidy
+  popd > /dev/null
+}
+
 # Step 1: Initialize Go modules and install dependencies
 init_go_mod "./transcoding-controller" "transcoding-controller"
 init_go_mod "./transcode-worker" "transcode-worker"
