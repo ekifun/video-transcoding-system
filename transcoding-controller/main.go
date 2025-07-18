@@ -33,7 +33,7 @@ func main() {
 
 	InitKafka()
 	InitRedis()
-	InitDB()
+	InitDB()  // Initialize SQLite for /jobs endpoint
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -41,7 +41,7 @@ func main() {
 	})
 
 	http.HandleFunc("/transcode", handleTranscodeRequest)
-	http.HandleFunc("/jobs", handleListJobs)
+	http.HandleFunc("/jobs", handleListJobs)  // List jobs from DB
 
 	log.Println("🚀 Controller running on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
@@ -61,7 +61,6 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("📥 Received transcode request: %+v", req)
-	log.Printf("📥 GOP Size: %d, KeyintMin: %d", req.GopSize, req.KeyintMin)
 
 	if req.StreamName == "" || req.InputURL == "" || len(req.Resolutions) == 0 || req.Codec == "" {
 		http.Error(w, "Missing required fields", http.StatusBadRequest)
@@ -96,8 +95,8 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 			Bitrate:        info.Bitrate,
 			Codec:          req.Codec,
 			OutputPath:     fmt.Sprintf("s3://output/%s/video_%s.mp4", jobID, rep),
-			GopSize:        req.GopSize,     // ✅ Now passed
-			KeyintMin:      req.KeyintMin,   // ✅ Now passed
+			GopSize:        req.GopSize,
+			KeyintMin:      req.KeyintMin,
 		}
 
 		if err := PublishJob("transcode-jobs", job); err != nil {
@@ -112,7 +111,7 @@ func handleTranscodeRequest(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleListJobs(w http.ResponseWriter, r *http.Request) {
-	jobs, err := GetAllTranscodedJobs(50)
+	jobs, err := GetAllTranscodedJobs(50)  // Fetch directly from SQLite DB
 	if err != nil {
 		http.Error(w, "Failed to fetch jobs", http.StatusInternalServerError)
 		log.Printf("❌ Failed to fetch jobs: %v", err)

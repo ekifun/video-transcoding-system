@@ -27,19 +27,21 @@ func InitDB() {
 }
 
 type TranscodedJob struct {
-	JobID         string `json:"job_id"`
-	StreamName    string `json:"stream_name"`
-	InputURL      string `json:"input_url"`
-	Codec         string `json:"codec"`
+	JobID          string `json:"job_id"`
+	StreamName     string `json:"stream_name"`
+	InputURL       string `json:"input_url"`
+	Codec          string `json:"codec"`
 	Representations string `json:"representations"`
-	MPDURL        string `json:"mpd_url"`
-	CreatedAt     string `json:"created_at"`
+	MPDURL         string `json:"mpd_url"`
+	Status         string `json:"status"`
+	CreatedAt      string `json:"created_at"`
+	UpdatedAt      string `json:"updated_at"`
 }
 
 func GetAllTranscodedJobs(limit int) ([]TranscodedJob, error) {
 	rows, err := db.Query(`
-		SELECT job_id, stream_name, input_url, codec, representations, mpd_url, created_at
-		FROM transcoded_jobs
+		SELECT job_id, stream_name, input_url, codec, representations, mpd_url, status, created_at, updated_at
+		FROM transcoding_jobs
 		ORDER BY created_at DESC
 		LIMIT ?`, limit)
 	if err != nil {
@@ -50,7 +52,17 @@ func GetAllTranscodedJobs(limit int) ([]TranscodedJob, error) {
 	var jobs []TranscodedJob
 	for rows.Next() {
 		var job TranscodedJob
-		err := rows.Scan(&job.JobID, &job.StreamName, &job.InputURL, &job.Codec, &job.Representations, &job.MPDURL, &job.CreatedAt)
+		err := rows.Scan(
+			&job.JobID,
+			&job.StreamName,
+			&job.InputURL,
+			&job.Codec,
+			&job.Representations,
+			&job.MPDURL,
+			&job.Status,
+			&job.CreatedAt,
+			&job.UpdatedAt,
+		)
 		if err != nil {
 			log.Printf("⚠️ Scan error: %v", err)
 			continue
