@@ -124,6 +124,13 @@ func generateMPD(jobID string) {
 	} else {
 		log.Printf("✅ MPD URL updated in DB for job %s", jobID)
 	}
+
+	// Mark job as done after MPD generation completes
+	if err := UpdateJobStatus(jobID, "done"); err != nil {
+		log.Printf("⚠️ Failed to mark job %s as done: %v", jobID, err)
+	} else {
+		log.Printf("✅ Job %s marked as done in DB", jobID)
+	}
 }
 
 func parseRequiredReps(input string) []string {
