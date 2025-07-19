@@ -125,13 +125,6 @@ func generateMPD(jobID string) {
 		log.Printf("✅ MPD URL updated in DB for job %s", jobID)
 	}
 
-	// Mark job as done in DB
-	if err := UpdateJobStatus(jobID, "done"); err != nil {
-		log.Printf("⚠️ Failed to mark job %s as done: %v", jobID, err)
-	} else {
-		log.Printf("✅ Job %s marked as done in DB", jobID)
-	}
-
 	// ✅ Also update Redis status to "done"
 	_, err = redisClient.HSet(ctx, redisKey, "status", "done").Result()
 	if err != nil {
