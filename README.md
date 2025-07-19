@@ -9,7 +9,7 @@ This project provides an end-to-end video transcoding pipeline supporting multip
 ## Current Scalability Improvements in Progress
 #### Per-Worker Concurrency Control (feature/concurrency-limit-worker)
 Implementing a semaphore-based worker pool to limit concurrent FFmpeg jobs within each container, ensuring safe and controlled processing.
-#### Redis-Based Centralized Job State Tracking
+#### Redis-Based Centralized Job State Tracking (feature/centralized-redis-job-tracking)
 Using Redis to centrally track job progress and state across the entire system for better visibility and management.
 #### Optional (Recommended): Prometheus Metrics + Grafana Dashboards
 Adding Prometheus and Grafana to monitor real-time system load, active jobs, queue depth, and processing performance through interactive dashboards.
