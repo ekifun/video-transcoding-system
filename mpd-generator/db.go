@@ -42,3 +42,19 @@ func UpdateMPDUrl(jobID, mpdURL string) error {
 	log.Printf("✅ Updated MPD URL for job %s", jobID)
 	return nil
 }
+
+// UpdateJobStatus updates the status field for a given job_id.
+func UpdateJobStatus(jobID, status string) error {
+	stmt := `
+	UPDATE transcoding_jobs
+	SET status = ?, updated_at = CURRENT_TIMESTAMP
+	WHERE job_id = ?;`
+
+	_, err := DB.Exec(stmt, status, jobID)
+	if err != nil {
+		return fmt.Errorf("❌ Failed to update status for job %s: %w", jobID, err)
+	}
+
+	log.Printf("✅ Updated job status to %s for job %s", status, jobID)
+	return nil
+}
