@@ -118,18 +118,26 @@ func generateMPD(jobID string) {
 
 	log.Printf("✅ MPD generated: %s", localMPDPath)
 
-	// Update only MPD URL in DB
+	// Update MPD URL in DB
 	if err := UpdateMPDUrl(jobID, publicMPDURL); err != nil {
 		log.Printf("⚠️ Failed to update MPD URL in DB for job %s: %v", jobID, err)
 	} else {
 		log.Printf("✅ MPD URL updated in DB for job %s", jobID)
 	}
 
-	// Mark job as done after MPD generation completes
+	// Mark job as done in DB
 	if err := UpdateJobStatus(jobID, "done"); err != nil {
 		log.Printf("⚠️ Failed to mark job %s as done: %v", jobID, err)
 	} else {
 		log.Printf("✅ Job %s marked as done in DB", jobID)
+	}
+
+	// ✅ Also update Redis status to "done"
+	_, err = redisClient.HSet(ctx, redisKey, "status", "done").Result()
+	if err != nil {
+		log.Printf("⚠️ Failed to update Redis status for job %s: %v", jobID, err)
+	} else {
+		log.Printf("✅ Job %s marked as done in Redis", jobID)
 	}
 }
 
