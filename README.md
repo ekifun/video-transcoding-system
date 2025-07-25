@@ -6,6 +6,23 @@
 
 This project provides an end-to-end video transcoding pipeline supporting multiple resolutions and codecs (H.264/AVC, HEVC, VVC, VP9, and AV1). It is built with Kafka, Redis, Go microservices, FFmpeg, and MP4Box for DASH packaging and adaptive streaming.
 
+## How to Use the App with Expo Go
+#### Install Expo Go on your mobile phone
+iOS: Download from App Store
+https://apps.apple.com/app/expo-go/id982107779
+Android: Download from Google Play
+https://play.google.com/store/apps/details?id=host.exp.exponent
+#### Scan the QR code
+Open the Expo Go app on your device
+
+Scan this QR code to open the app in Expo Go
+
+<img src="./qrcode.png" width="200" height="200" alt="QR Code">
+
+Point your camera at the QR code shown in the terminal or browser
+
+The app will load and run on your phone automatically
+
 ## Current Scalability Improvements in Progress
 #### Per-Worker Concurrency Control (feature/concurrency-limit-worker)
 Implementing a semaphore-based worker pool to limit concurrent FFmpeg jobs within each container, ensuring safe and controlled processing.
